@@ -1,0 +1,35 @@
+{
+  "name": "linkedctl",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "clean": "turbo run clean",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e --concurrency=1",
+    "format:check": "prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "license-check": "node scripts/check-licenses.js",
+    "publish-check": "node scripts/check-publish-manifest.js",
+    "dev": "turbo run dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "eslint-config-prettier": "catalog:",
+    "@tony.ganchev/eslint-plugin-header": "catalog:",
+    "prettier": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

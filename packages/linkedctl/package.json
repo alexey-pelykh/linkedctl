@@ -1,0 +1,58 @@
+{
+  "name": "linkedctl",
+  "version": "0.0.0",
+  "description": "The complete CLI & MCP for LinkedIn",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "AGPL-3.0-only",
+  "author": "Alexey Pelykh (https://github.com/alexey-pelykh)",
+  "homepage": "https://github.com/alexey-pelykh/linkedctl",
+  "bugs": "https://github.com/alexey-pelykh/linkedctl/issues",
+  "funding": "https://github.com/sponsors/alexey-pelykh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexey-pelykh/linkedctl.git",
+    "directory": "packages/linkedctl"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "bin": {
+    "linkedctl": "./dist/cli.js"
+  },
+  "mcpName": "io.github.alexey-pelykh/linkedctl",
+  "keywords": [
+    "linkedin",
+    "social-media",
+    "oauth2",
+    "mcp",
+    "cli"
+  ],
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "prepack": "cp ../../README.md ../../LICENSE .",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src/",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@linkedctl/cli": "workspace:^",
+    "@linkedctl/mcp": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
