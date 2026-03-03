@@ -17,9 +17,6 @@ export function detectFormat(stream: { isTTY?: boolean }): OutputFormat {
 /**
  * Resolve the effective output format: an explicit choice overrides TTY detection.
  */
-export function resolveFormat(
-  explicit: OutputFormat | undefined,
-  stream: { isTTY?: boolean },
-): OutputFormat {
+export function resolveFormat(explicit: OutputFormat | undefined, stream: { isTTY?: boolean }): OutputFormat {
   return explicit ?? detectFormat(stream);
 }
