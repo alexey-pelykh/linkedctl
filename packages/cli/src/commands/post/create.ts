@@ -2,13 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command } from "commander";
-import {
-  resolveConfig,
-  LinkedInClient,
-  getCurrentPersonUrn,
-  createTextPost,
-  LinkedInApiError,
-} from "@linkedctl/core";
+import { resolveConfig, LinkedInClient, getCurrentPersonUrn, createTextPost, LinkedInApiError } from "@linkedctl/core";
 import type { PostVisibility } from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
 import type { OutputFormat } from "../../output/index.js";
@@ -35,19 +29,13 @@ async function resolveText(textOpt: string | undefined): Promise<string> {
     }
   }
 
-  throw new Error(
-    'No text provided. Use --text "message", pass text as an argument, or pipe text via stdin.',
-  );
+  throw new Error('No text provided. Use --text "message", pass text as an argument, or pipe text via stdin.');
 }
 
 /**
  * Shared action handler for creating a text post.
  */
-export async function createPostAction(
-  textOpt: string | undefined,
-  opts: CreateOpts,
-  cmd: Command,
-): Promise<void> {
+export async function createPostAction(textOpt: string | undefined, opts: CreateOpts, cmd: Command): Promise<void> {
   const text = await resolveText(textOpt);
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
 

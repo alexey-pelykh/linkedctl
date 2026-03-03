@@ -101,16 +101,7 @@ describe("post create", () => {
 
   it("outputs JSON when --format json is specified", async () => {
     const program = createProgram();
-    await program.parseAsync([
-      "node",
-      "linkedctl",
-      "post",
-      "create",
-      "--text",
-      "Hello",
-      "--format",
-      "json",
-    ]);
+    await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--format", "json"]);
 
     const output = consoleSpy.mock.calls[0]?.[0] as string;
     expect(JSON.parse(output)).toEqual({ urn: "urn:li:share:111222333" });
@@ -118,16 +109,7 @@ describe("post create", () => {
 
   it("outputs post URN in the result", async () => {
     const program = createProgram();
-    await program.parseAsync([
-      "node",
-      "linkedctl",
-      "post",
-      "create",
-      "--text",
-      "Hello",
-      "--format",
-      "json",
-    ]);
+    await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--format", "json"]);
 
     const output = consoleSpy.mock.calls[0]?.[0] as string;
     expect(output).toContain("urn:li:share:111222333");
@@ -135,20 +117,9 @@ describe("post create", () => {
 
   it("resolves config with profile from global options", async () => {
     const program = createProgram();
-    await program.parseAsync([
-      "node",
-      "linkedctl",
-      "--profile",
-      "work",
-      "post",
-      "create",
-      "--text",
-      "Hello",
-    ]);
+    await program.parseAsync(["node", "linkedctl", "--profile", "work", "post", "create", "--text", "Hello"]);
 
-    expect(coreMock.resolveConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ profile: "work" }),
-    );
+    expect(coreMock.resolveConfig).toHaveBeenCalledWith(expect.objectContaining({ profile: "work" }));
   });
 
   it("wraps API errors with actionable message", async () => {
@@ -158,8 +129,8 @@ describe("post create", () => {
     const program = createProgram();
     program.exitOverride();
 
-    await expect(
-      program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello"]),
-    ).rejects.toThrow(/Failed to create post/);
+    await expect(program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello"])).rejects.toThrow(
+      /Failed to create post/,
+    );
   });
 });
