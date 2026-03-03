@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildAuthorizationUrl, exchangeAuthorizationCode, refreshAccessToken } from "./oauth2-client.js";
+import { buildAuthorizationUrl, exchangeAuthorizationCode, refreshAccessToken, revokeAccessToken } from "./oauth2-client.js";
 import type { OAuth2Config } from "./types.js";
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -188,5 +188,48 @@ describe("refreshAccessToken", () => {
     fetchSpy.mockResolvedValueOnce(textResponse("invalid_token", 401));
 
     await expect(refreshAccessToken(OAUTH2_CONFIG, "expired")).rejects.toThrow(/OAuth2 token request failed/);
+  });
+});
+
+describe("revokeAccessToken", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sends correct parameters to revocation endpoint", async () => {
+    fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    await revokeAccessToken("test-client-id", "test-client-secret", "my-access-token");
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://www.linkedin.com/oauth/v2/revoke");
+    expect(init.method).toBe("POST");
+
+    const body = new URLSearchParams(init.body as string);
+    expect(body.get("client_id")).toBe("test-client-id");
+    expect(body.get("client_secret")).toBe("test-client-secret");
+    expect(body.get("token")).toBe("my-access-token");
+  });
+
+  it("resolves on successful revocation", async () => {
+    fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    await expect(revokeAccessToken("cid", "csecret", "tok")).resolves.toBeUndefined();
+  });
+
+  it("throws on non-OK response", async () => {
+    fetchSpy.mockResolvedValueOnce(textResponse("invalid_client", 401));
+
+    await expect(revokeAccessToken("bad-id", "bad-secret", "tok")).rejects.toThrow(
+      /OAuth2 token revocation failed \(HTTP 401\)/,
+    );
   });
 });

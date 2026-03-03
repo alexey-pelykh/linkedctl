@@ -5,6 +5,7 @@ import type { OAuth2Config, OAuth2TokenResponse } from "./types.js";
 
 const AUTHORIZATION_URL = "https://www.linkedin.com/oauth/v2/authorization";
 const TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
+const REVOKE_URL = "https://www.linkedin.com/oauth/v2/revoke";
 
 /**
  * Build the LinkedIn OAuth2 authorization URL that the user should open in
@@ -61,6 +62,28 @@ export async function refreshAccessToken(config: OAuth2Config, refreshToken: str
   });
 
   return tokenRequest(body);
+}
+
+/**
+ * Revoke an access token server-side via LinkedIn's OAuth2 revocation endpoint.
+ */
+export async function revokeAccessToken(clientId: string, clientSecret: string, token: string): Promise<void> {
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    token,
+  });
+
+  const response = await fetch(REVOKE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`OAuth2 token revocation failed (HTTP ${response.status}): ${text}`);
+  }
 }
 
 async function tokenRequest(body: URLSearchParams): Promise<OAuth2TokenResponse> {

@@ -5,6 +5,7 @@ import { Command } from "commander";
 import { tokenCommand } from "./token.js";
 import { statusCommand } from "./status.js";
 import { logoutCommand } from "./logout.js";
+import { revokeCommand } from "./revoke.js";
 import { loginCommand } from "./login.js";
 
 export function authCommand(): Command {
@@ -14,6 +15,7 @@ export function authCommand(): Command {
   cmd.addCommand(tokenCommand());
   cmd.addCommand(statusCommand());
   cmd.addCommand(logoutCommand());
+  cmd.addCommand(revokeCommand());
   cmd.addCommand(loginCommand());
 
   return cmd;

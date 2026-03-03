@@ -21,7 +21,12 @@ export type { ConfigFile, Profile, ResolvedConfig } from "./config/types.js";
 export { LinkedInApiError, LinkedInAuthError, LinkedInRateLimitError, LinkedInServerError } from "./http/errors.js";
 export { LinkedInClient } from "./http/linkedin-client.js";
 export type { LinkedInClientOptions } from "./http/linkedin-client.js";
-export { buildAuthorizationUrl, exchangeAuthorizationCode, refreshAccessToken } from "./oauth2/oauth2-client.js";
+export {
+  buildAuthorizationUrl,
+  exchangeAuthorizationCode,
+  refreshAccessToken,
+  revokeAccessToken,
+} from "./oauth2/oauth2-client.js";
 export { generateCodeVerifier, computeCodeChallenge } from "./oauth2/pkce.js";
 export type { OAuth2Config, OAuth2TokenResponse } from "./oauth2/types.js";
 export { getUserInfo } from "./userinfo/userinfo.js";
