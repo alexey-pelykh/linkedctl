@@ -13,8 +13,11 @@ vi.mock("@linkedctl/core", () => ({
   createTextPost: vi.fn(),
   getDefaultConfigPath: vi.fn(),
   readConfigFile: vi.fn(),
+  writeConfigFile: vi.fn(),
   getProfile: vi.fn(),
   getTokenExpiry: vi.fn(),
+  clearProfileCredentials: vi.fn(),
+  revokeAccessToken: vi.fn(),
 }));
 
 import {
@@ -24,8 +27,11 @@ import {
   createTextPost,
   getDefaultConfigPath,
   readConfigFile,
+  writeConfigFile,
   getProfile,
   getTokenExpiry,
+  clearProfileCredentials,
+  revokeAccessToken,
 } from "@linkedctl/core";
 
 describe("createMcpServer", () => {
@@ -53,12 +59,13 @@ describe("createMcpServer", () => {
     await cleanup();
   });
 
-  it("lists post_create and auth_status tools", async () => {
+  it("lists post_create, auth_status, and auth_revoke tools", async () => {
     const result = await client.listTools();
     const toolNames = result.tools.map((t) => t.name);
 
     expect(toolNames).toContain("post_create");
     expect(toolNames).toContain("auth_status");
+    expect(toolNames).toContain("auth_revoke");
   });
 
   describe("post_create", () => {
@@ -229,6 +236,106 @@ describe("createMcpServer", () => {
         {
           type: "text",
           text: expect.stringContaining("Profile: work"),
+        },
+      ]);
+    });
+  });
+
+  describe("auth_revoke", () => {
+    it("revokes token server-side and clears local credentials", async () => {
+      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
+      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
+      vi.mocked(getProfile).mockReturnValue({
+        "access-token": "my-token",
+        "api-version": "202401",
+        "client-id": "cid",
+        "client-secret": "csecret",
+      });
+      vi.mocked(revokeAccessToken).mockResolvedValue(undefined);
+      vi.mocked(clearProfileCredentials).mockReturnValue({ "default-profile": "default", profiles: {} });
+      vi.mocked(writeConfigFile).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "auth_revoke",
+        arguments: {},
+      });
+
+      expect(revokeAccessToken).toHaveBeenCalledWith("cid", "csecret", "my-token");
+      expect(clearProfileCredentials).toHaveBeenCalled();
+      expect(writeConfigFile).toHaveBeenCalled();
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Access token revoked server-side"),
+        },
+      ]);
+    });
+
+    it("clears local credentials with warning when server-side revocation fails", async () => {
+      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
+      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
+      vi.mocked(getProfile).mockReturnValue({
+        "access-token": "my-token",
+        "api-version": "202401",
+        "client-id": "cid",
+        "client-secret": "csecret",
+      });
+      vi.mocked(revokeAccessToken).mockRejectedValue(new Error("network error"));
+      vi.mocked(clearProfileCredentials).mockReturnValue({ "default-profile": "default", profiles: {} });
+      vi.mocked(writeConfigFile).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "auth_revoke",
+        arguments: {},
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Warning: Server-side revocation failed"),
+        },
+      ]);
+    });
+
+    it("returns error when profile not found", async () => {
+      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
+      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
+      vi.mocked(getProfile).mockReturnValue(undefined);
+
+      const result = await client.callTool({
+        name: "auth_revoke",
+        arguments: {},
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("not found"),
+        },
+      ]);
+    });
+
+    it("clears local credentials when client credentials are missing", async () => {
+      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
+      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
+      vi.mocked(getProfile).mockReturnValue({
+        "access-token": "my-token",
+        "api-version": "202401",
+      });
+      vi.mocked(clearProfileCredentials).mockReturnValue({ "default-profile": "default", profiles: {} });
+      vi.mocked(writeConfigFile).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "auth_revoke",
+        arguments: {},
+      });
+
+      expect(revokeAccessToken).not.toHaveBeenCalled();
+      expect(clearProfileCredentials).toHaveBeenCalled();
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("No complete credentials for server-side revocation"),
         },
       ]);
     });
