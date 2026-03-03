@@ -102,16 +102,7 @@ describe("auth token", () => {
     await writeConfigFile(configPath, initial);
 
     const program = createProgram();
-    await program.parseAsync([
-      "node",
-      "linkedctl",
-      "--profile",
-      "work",
-      "auth",
-      "token",
-      "--access-token",
-      "w-token",
-    ]);
+    await program.parseAsync(["node", "linkedctl", "--profile", "work", "auth", "token", "--access-token", "w-token"]);
 
     const config = await readConfigFile(configPath);
     expect(config["default-profile"]).toBe("personal");
@@ -126,16 +117,7 @@ describe("auth token", () => {
 
   it("logs profile name when --profile is used", async () => {
     const program = createProgram();
-    await program.parseAsync([
-      "node",
-      "linkedctl",
-      "--profile",
-      "work",
-      "auth",
-      "token",
-      "--access-token",
-      "tok",
-    ]);
+    await program.parseAsync(["node", "linkedctl", "--profile", "work", "auth", "token", "--access-token", "tok"]);
 
     expect(console.log).toHaveBeenCalledWith('Access token stored in profile "work".');
   });
