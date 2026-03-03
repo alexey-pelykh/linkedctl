@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
+import { join } from "node:path";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import * as core from "@linkedctl/core";
 import { deleteCommand } from "./delete.js";
@@ -47,7 +48,7 @@ describe("profile delete", () => {
     const cmd = deleteCommand();
     await cmd.parseAsync(["work"], { from: "user" });
 
-    expect(vi.mocked(unlink)).toHaveBeenCalledWith("/mock/home/.linkedctl/work.yaml");
+    expect(vi.mocked(unlink)).toHaveBeenCalledWith(join("/mock/home", ".linkedctl", "work.yaml"));
     expect(consoleSpy).toHaveBeenCalledWith('Profile "work" deleted.');
   });
 
