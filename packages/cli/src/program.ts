@@ -4,6 +4,7 @@
 import { Command } from "commander";
 import { authCommand } from "./commands/auth/index.js";
 import { profileCommand } from "./commands/profile/index.js";
+import { whoamiCommand } from "./commands/whoami.js";
 
 /**
  * Build and return the top-level Commander program.
@@ -15,6 +16,7 @@ export function createProgram(): Command {
 
   program.addCommand(authCommand());
   program.addCommand(profileCommand());
+  program.addCommand(whoamiCommand());
 
   return program;
 }
