@@ -38,6 +38,22 @@ describe("buildAuthorizationUrl", () => {
     expect(parsed.searchParams.get("scope")).toBe("openid profile");
     expect(parsed.searchParams.get("state")).toBe("test-state");
   });
+
+  it("omits PKCE parameters when no code challenge is provided", () => {
+    const url = buildAuthorizationUrl(OAUTH2_CONFIG, "test-state");
+    const parsed = new URL(url);
+
+    expect(parsed.searchParams.has("code_challenge")).toBe(false);
+    expect(parsed.searchParams.has("code_challenge_method")).toBe(false);
+  });
+
+  it("includes PKCE parameters when code challenge is provided", () => {
+    const url = buildAuthorizationUrl(OAUTH2_CONFIG, "test-state", "test-code-challenge");
+    const parsed = new URL(url);
+
+    expect(parsed.searchParams.get("code_challenge")).toBe("test-code-challenge");
+    expect(parsed.searchParams.get("code_challenge_method")).toBe("S256");
+  });
 });
 
 describe("exchangeAuthorizationCode", () => {
@@ -112,6 +128,30 @@ describe("exchangeAuthorizationCode", () => {
     fetchSpy.mockResolvedValueOnce(jsonResponse({ error: "something_wrong" }));
 
     await expect(exchangeAuthorizationCode(OAUTH2_CONFIG, "code")).rejects.toThrow(/missing access_token/);
+  });
+
+  it("omits code_verifier when not provided", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }),
+    );
+
+    await exchangeAuthorizationCode(OAUTH2_CONFIG, "code");
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const body = new URLSearchParams(init.body as string);
+    expect(body.has("code_verifier")).toBe(false);
+  });
+
+  it("includes code_verifier when provided", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }),
+    );
+
+    await exchangeAuthorizationCode(OAUTH2_CONFIG, "code", "my-verifier");
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const body = new URLSearchParams(init.body as string);
+    expect(body.get("code_verifier")).toBe("my-verifier");
   });
 });
 

@@ -15,6 +15,8 @@ import {
   buildAuthorizationUrl,
   exchangeAuthorizationCode,
   refreshAccessToken,
+  generateCodeVerifier,
+  computeCodeChallenge,
 } from "@linkedctl/core";
 import type { OAuth2Config, Profile } from "@linkedctl/core";
 
@@ -76,10 +78,12 @@ export function loginCommand(): Command {
       }
     }
 
-    // Full OAuth2 authorization code flow
+    // Full OAuth2 authorization code flow with PKCE
     const { port, result, stop } = await startCallbackServer();
     const redirectUri = `http://127.0.0.1:${port}/callback`;
     const state = randomUUID();
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = computeCodeChallenge(codeVerifier);
 
     const oauth2Config: OAuth2Config = {
       clientId,
@@ -88,7 +92,7 @@ export function loginCommand(): Command {
       scope: opts.scope,
     };
 
-    const authUrl = buildAuthorizationUrl(oauth2Config, state);
+    const authUrl = buildAuthorizationUrl(oauth2Config, state, codeChallenge);
     console.log("Opening browser for LinkedIn authorization...");
     console.log(`If the browser does not open, visit:\n${authUrl}`);
     openBrowser(authUrl);
@@ -100,7 +104,7 @@ export function loginCommand(): Command {
         throw new Error("OAuth2 state mismatch — possible CSRF attack");
       }
 
-      const tokens = await exchangeAuthorizationCode(oauth2Config, callback.code);
+      const tokens = await exchangeAuthorizationCode(oauth2Config, callback.code, codeVerifier);
       const updatedProfile = buildProfile(existingProfile, tokens, clientId, clientSecret);
       config = setProfile(config, profileName, updatedProfile);
       if (config["default-profile"] === undefined) {
