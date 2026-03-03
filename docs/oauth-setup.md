@@ -13,10 +13,10 @@ This guide walks you through creating a LinkedIn Developer App and authenticatin
 1. Go to the [LinkedIn Developer Portal](https://www.linkedin.com/developers/apps)
 2. Click **Create app**
 3. Fill in the required fields:
-   - **App name** — a name for your application (e.g. "LinkedCtl")
-   - **LinkedIn Page** — associate it with a LinkedIn Page you admin (required by LinkedIn)
-   - **App logo** — upload a logo image
-   - **Legal agreement** — accept the terms
+    - **App name** — a name for your application (e.g. "LinkedCtl")
+    - **LinkedIn Page** — associate it with a LinkedIn Page you admin (required by LinkedIn)
+    - **App logo** — upload a logo image
+    - **Legal agreement** — accept the terms
 4. Click **Create app**
 
 ## 2. Configure OAuth 2.0 Settings
@@ -37,11 +37,11 @@ After creating the app, configure the OAuth 2.0 redirect URL:
 
 LinkedCtl requires specific OAuth scopes depending on which features you use:
 
-| Scope | Required for | Product |
-| --- | --- | --- |
-| `openid` | Authentication, `whoami` | Sign In with LinkedIn using OpenID Connect |
-| `profile` | User profile access, `whoami` | Sign In with LinkedIn using OpenID Connect |
-| `w_member_social` | Creating posts | Share on LinkedIn |
+| Scope             | Required for                  | Product                                    |
+| ----------------- | ----------------------------- | ------------------------------------------ |
+| `openid`          | Authentication, `whoami`      | Sign In with LinkedIn using OpenID Connect |
+| `profile`         | User profile access, `whoami` | Sign In with LinkedIn using OpenID Connect |
+| `w_member_social` | Creating posts                | Share on LinkedIn                          |
 
 To enable these scopes:
 
