@@ -6,6 +6,7 @@ import { tokenCommand } from "./token.js";
 import { statusCommand } from "./status.js";
 import { logoutCommand } from "./logout.js";
 import { loginCommand } from "./login.js";
+import { refreshCommand } from "./refresh.js";
 
 export function authCommand(): Command {
   const cmd = new Command("auth");
@@ -15,6 +16,7 @@ export function authCommand(): Command {
   cmd.addCommand(statusCommand());
   cmd.addCommand(logoutCommand());
   cmd.addCommand(loginCommand());
+  cmd.addCommand(refreshCommand());
 
   return cmd;
 }
