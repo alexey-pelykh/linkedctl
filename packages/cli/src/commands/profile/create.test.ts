@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
+import { join } from "node:path";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import * as core from "@linkedctl/core";
 import { createCommand } from "./create.js";
@@ -52,9 +53,9 @@ describe("profile create", () => {
     await cmd.parseAsync(["personal", "--access-token", "tok123", "--api-version", "202501"], { from: "user" });
 
     expect(loadConfigFileSpy).toHaveBeenCalledWith({ profile: "personal" });
-    expect(vi.mocked(mkdir)).toHaveBeenCalledWith("/mock/home/.linkedctl", { recursive: true });
+    expect(vi.mocked(mkdir)).toHaveBeenCalledWith(join("/mock/home", ".linkedctl"), { recursive: true });
     expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
-      "/mock/home/.linkedctl/personal.yaml",
+      join("/mock/home", ".linkedctl", "personal.yaml"),
       'api-version: "202501"\n',
       { mode: 0o600 },
     );
