@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { authCommand } from "./commands/auth/index.js";
+import { postCommand } from "./commands/post/index.js";
 import { profileCommand } from "./commands/profile/index.js";
 import { whoamiCommand } from "./commands/whoami.js";
 
@@ -15,6 +16,7 @@ export function createProgram(): Command {
   program.option("--profile <name>", "profile to use from config file");
 
   program.addCommand(authCommand());
+  program.addCommand(postCommand());
   program.addCommand(profileCommand());
   program.addCommand(whoamiCommand());
 

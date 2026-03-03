@@ -354,4 +354,75 @@ describe("LinkedInClient", () => {
       }
     });
   });
+
+  describe("create", () => {
+    it("sends POST with JSON body and Content-Type header", async () => {
+      const response = new Response(null, {
+        status: 201,
+        headers: { "x-restli-id": "urn:li:share:123" },
+      });
+      fetchSpy.mockResolvedValueOnce(response);
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      await client.create("/rest/posts", { commentary: "Hello" });
+
+      const [, init] = fetchSpy.mock.calls[0];
+      expect(init.method).toBe("POST");
+      expect(init.headers.get("Content-Type")).toBe("application/json");
+      expect(init.body).toBe(JSON.stringify({ commentary: "Hello" }));
+    });
+
+    it("returns the x-restli-id header value", async () => {
+      const response = new Response(null, {
+        status: 201,
+        headers: { "x-restli-id": "urn:li:share:456" },
+      });
+      fetchSpy.mockResolvedValueOnce(response);
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      const id = await client.create("/rest/posts", { commentary: "Test" });
+
+      expect(id).toBe("urn:li:share:456");
+    });
+
+    it("throws LinkedInApiError when x-restli-id header is missing", async () => {
+      const response = new Response(null, { status: 201 });
+      fetchSpy.mockResolvedValueOnce(response);
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      try {
+        await client.create("/rest/posts", {});
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(LinkedInApiError);
+        expect((error as LinkedInApiError).message).toMatch(/No resource ID/);
+      }
+    });
+
+    it("retries on 429 then returns ID on success", async () => {
+      const rateLimited = jsonResponse({}, 429);
+      const created = new Response(null, {
+        status: 201,
+        headers: { "x-restli-id": "urn:li:share:789" },
+      });
+      fetchSpy.mockResolvedValueOnce(rateLimited).mockResolvedValueOnce(created);
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      stubSleep(client);
+
+      const id = await client.create("/rest/posts", { commentary: "Retry" });
+
+      expect(id).toBe("urn:li:share:789");
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("throws on 401 error", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({}, 401));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.create("/rest/posts", {})).rejects.toThrow(LinkedInAuthError);
+    });
+  });
 });
