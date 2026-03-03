@@ -36,12 +36,14 @@ npx linkedctl --help
 2. Configure OAuth 2.0 credentials
 3. Authenticate:
     ```sh
-    linkedctl auth login
+    linkedctl auth login --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
     ```
 4. Start using:
     ```sh
     linkedctl post "Hello from LinkedCtl!"
     ```
+
+See the [OAuth Setup Guide](docs/oauth-setup.md) for detailed step-by-step instructions.
 
 ## MCP Integration
 
