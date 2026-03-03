@@ -111,7 +111,7 @@ describe("writeConfigFile", () => {
     expect(raw).toContain("access-token: abc");
   });
 
-  it("sets file permissions to 0600", async () => {
+  it.skipIf(process.platform === "win32")("sets file permissions to 0600", async () => {
     await writeConfigFile(path, {});
     const info = await stat(path);
     // Mask off file type bits to get permission bits
