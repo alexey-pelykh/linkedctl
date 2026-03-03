@@ -25,8 +25,7 @@ export function applyEnvOverlay(
   const clientSecret = env[`${prefix}CLIENT_SECRET`];
   const apiVersion = env[`${prefix}API_VERSION`];
 
-  const hasOauthOverride =
-    accessToken !== undefined || clientId !== undefined || clientSecret !== undefined;
+  const hasOauthOverride = accessToken !== undefined || clientId !== undefined || clientSecret !== undefined;
 
   const result: LinkedctlConfig = { ...config };
 

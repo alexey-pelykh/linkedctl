@@ -71,9 +71,11 @@ export async function saveOAuthClientCredentials(
  * Removes `access-token`, `refresh-token`, `token-expires-at` from the oauth section
  * but preserves `client-id` and `client-secret`.
  */
-export async function clearOAuthTokens(
-  options?: { profile?: string | undefined; home?: string | undefined; cwd?: string | undefined },
-): Promise<void> {
+export async function clearOAuthTokens(options?: {
+  profile?: string | undefined;
+  home?: string | undefined;
+  cwd?: string | undefined;
+}): Promise<void> {
   const path = resolveWritePath(options);
   const raw = await loadRawConfig(path);
 
