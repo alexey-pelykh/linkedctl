@@ -6,19 +6,17 @@ import { execFile } from "node:child_process";
 import { platform } from "node:os";
 import { Command } from "commander";
 import {
-  getDefaultConfigPath,
-  readConfigFile,
-  writeConfigFile,
-  getProfile,
-  setProfile,
-  setDefaultProfile,
+  loadConfigFile,
+  validateConfig,
+  saveOAuthTokens,
+  saveOAuthClientCredentials,
   buildAuthorizationUrl,
   exchangeAuthorizationCode,
   refreshAccessToken,
   generateCodeVerifier,
   computeCodeChallenge,
 } from "@linkedctl/core";
-import type { OAuth2Config, Profile } from "@linkedctl/core";
+import type { OAuth2Config } from "@linkedctl/core";
 
 import { startCallbackServer } from "./callback-server.js";
 
@@ -27,34 +25,33 @@ const DEFAULT_SCOPE = "openid profile w_member_social";
 export function loginCommand(): Command {
   const cmd = new Command("login");
   cmd.description("Authenticate with LinkedIn via OAuth2");
-  cmd.option("--client-id <id>", "OAuth2 client ID (overrides profile value)");
-  cmd.option("--client-secret <secret>", "OAuth2 client secret (overrides profile value)");
+  cmd.option("--client-id <id>", "OAuth2 client ID (overrides config value)");
+  cmd.option("--client-secret <secret>", "OAuth2 client secret (overrides config value)");
   cmd.option("--scope <scopes>", "OAuth2 scopes (space-separated)", DEFAULT_SCOPE);
 
   cmd.action(async (opts: { clientId?: string; clientSecret?: string; scope: string }) => {
-    const configPath = getDefaultConfigPath();
-    let config = await readConfigFile(configPath);
-
-    // Determine active profile name
     const program = cmd.parent?.parent;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const profileFlag: string | undefined = program?.opts()["profile"];
-    const profileName = profileFlag ?? config["default-profile"] ?? "default";
-    const existingProfile = getProfile(config, profileName);
 
-    // Resolve client credentials: CLI flags > profile config
-    const clientId = opts.clientId ?? existingProfile?.["client-id"];
-    const clientSecret = opts.clientSecret ?? existingProfile?.["client-secret"];
+    const { raw } = await loadConfigFile({ profile: profileFlag });
+    const { config } = validateConfig(raw);
+
+    // Resolve client credentials: CLI flags > config
+    const clientId = opts.clientId ?? config.oauth?.clientId;
+    const clientSecret = opts.clientSecret ?? config.oauth?.clientSecret;
 
     if (clientId === undefined || clientSecret === undefined) {
       throw new Error(
         "Missing OAuth2 credentials. Provide --client-id and --client-secret, " +
-          'or store them in your profile with "linkedctl profile create".',
+          'or store them in your config with "linkedctl auth login".',
       );
     }
 
+    const writeOpts = { profile: profileFlag };
+
     // Check for existing refresh token and attempt refresh first
-    const existingRefreshToken = existingProfile?.["refresh-token"];
+    const existingRefreshToken = config.oauth?.refreshToken;
     if (existingRefreshToken !== undefined) {
       console.log("Attempting token refresh...");
       const refreshConfig: OAuth2Config = {
@@ -65,13 +62,18 @@ export function loginCommand(): Command {
       };
       try {
         const tokens = await refreshAccessToken(refreshConfig, existingRefreshToken);
-        const updatedProfile = buildProfile(existingProfile, tokens, clientId, clientSecret);
-        config = setProfile(config, profileName, updatedProfile);
-        if (config["default-profile"] === undefined) {
-          config = setDefaultProfile(config, profileName);
-        }
-        await writeConfigFile(configPath, config);
-        console.log(`Token refreshed for profile "${profileName}".`);
+        const expiry = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
+        await saveOAuthTokens(
+          {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            tokenExpiresAt: expiry,
+          },
+          writeOpts,
+        );
+        await saveOAuthClientCredentials({ clientId, clientSecret }, writeOpts);
+        const label = profileFlag ?? "default";
+        console.log(`Token refreshed for profile "${label}".`);
         return;
       } catch {
         console.log("Token refresh failed, starting full authorization flow...");
@@ -105,36 +107,24 @@ export function loginCommand(): Command {
       }
 
       const tokens = await exchangeAuthorizationCode(oauth2Config, callback.code, codeVerifier);
-      const updatedProfile = buildProfile(existingProfile, tokens, clientId, clientSecret);
-      config = setProfile(config, profileName, updatedProfile);
-      if (config["default-profile"] === undefined) {
-        config = setDefaultProfile(config, profileName);
-      }
-      await writeConfigFile(configPath, config);
-      console.log(`Authenticated and saved to profile "${profileName}".`);
+      const expiry = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
+      await saveOAuthTokens(
+        {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          tokenExpiresAt: expiry,
+        },
+        writeOpts,
+      );
+      await saveOAuthClientCredentials({ clientId, clientSecret }, writeOpts);
+      const label = profileFlag ?? "default";
+      console.log(`Authenticated and saved to profile "${label}".`);
     } finally {
       await stop();
     }
   });
 
   return cmd;
-}
-
-function buildProfile(
-  existing: Profile | undefined,
-  tokens: { accessToken: string; expiresIn: number; refreshToken?: string | undefined },
-  clientId: string,
-  clientSecret: string,
-): Profile {
-  const expiry = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
-  return {
-    "access-token": tokens.accessToken,
-    "api-version": existing?.["api-version"] ?? "202501",
-    "client-id": clientId,
-    "client-secret": clientSecret,
-    "refresh-token": tokens.refreshToken ?? existing?.["refresh-token"],
-    "token-expiry": expiry,
-  };
 }
 
 function openBrowser(url: string): void {

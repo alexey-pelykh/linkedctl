@@ -9,9 +9,11 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
   return {
     ...actual,
     resolveConfig: vi.fn().mockResolvedValue({
-      accessToken: "test-token",
-      apiVersion: "202501",
-      profile: "default",
+      config: {
+        oauth: { accessToken: "test-token" },
+        apiVersion: "202501",
+      },
+      warnings: [],
     }),
     getCurrentPersonUrn: vi.fn().mockResolvedValue("urn:li:person:person123"),
     createTextPost: vi.fn().mockResolvedValue("urn:li:share:111222333"),
@@ -27,9 +29,11 @@ describe("post create", () => {
     vi.clearAllMocks();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.mocked(coreMock.resolveConfig).mockResolvedValue({
-      accessToken: "test-token",
-      apiVersion: "202501",
-      profile: "default",
+      config: {
+        oauth: { accessToken: "test-token" },
+        apiVersion: "202501",
+      },
+      warnings: [],
     });
     vi.mocked(coreMock.createTextPost).mockResolvedValue("urn:li:share:111222333");
     vi.mocked(coreMock.getCurrentPersonUrn).mockResolvedValue("urn:li:person:person123");

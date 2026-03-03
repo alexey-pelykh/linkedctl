@@ -3,11 +3,10 @@
 
 import { Command } from "commander";
 import {
-  getDefaultConfigPath,
-  readConfigFile,
-  writeConfigFile,
-  getProfile,
-  setProfile,
+  loadConfigFile,
+  validateConfig,
+  saveOAuthTokens,
+  saveOAuthClientCredentials,
   refreshAccessToken,
 } from "@linkedctl/core";
 import type { OAuth2Config } from "@linkedctl/core";
@@ -18,28 +17,22 @@ export function refreshCommand(): Command {
 
   cmd.action(async (_opts: Record<string, unknown>, actionCmd: Command) => {
     const rootOpts = actionCmd.optsWithGlobals();
-    const configPath = getDefaultConfigPath();
-    let config = await readConfigFile(configPath);
-
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;
-    const profileName = profileFlag ?? config["default-profile"] ?? "default";
-    const existingProfile = getProfile(config, profileName);
 
-    if (existingProfile === undefined) {
-      throw new Error(`Profile "${profileName}" not found.`);
-    }
+    const { raw } = await loadConfigFile({ profile: profileFlag });
+    const { config } = validateConfig(raw);
 
-    const clientId = existingProfile["client-id"];
-    const clientSecret = existingProfile["client-secret"];
+    const clientId = config.oauth?.clientId;
+    const clientSecret = config.oauth?.clientSecret;
 
     if (clientId === undefined || clientSecret === undefined) {
       throw new Error(
-        "Missing OAuth2 credentials in profile. " +
+        "Missing OAuth2 credentials in config. " +
           'Run "linkedctl auth login --client-id <id> --client-secret <secret>" first.',
       );
     }
 
-    const existingRefreshToken = existingProfile["refresh-token"];
+    const existingRefreshToken = config.oauth?.refreshToken;
 
     if (existingRefreshToken === undefined) {
       throw new Error(
@@ -56,21 +49,22 @@ export function refreshCommand(): Command {
       scope: "",
     };
 
+    const writeOpts = { profile: profileFlag };
+
     try {
       const tokens = await refreshAccessToken(oauth2Config, existingRefreshToken);
       const expiry = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
-      const updatedProfile = {
-        "access-token": tokens.accessToken,
-        "api-version": existingProfile["api-version"],
-        "client-id": clientId,
-        "client-secret": clientSecret,
-        "refresh-token": tokens.refreshToken ?? existingProfile["refresh-token"],
-        "token-expiry": expiry,
-      };
-
-      config = setProfile(config, profileName, updatedProfile);
-      await writeConfigFile(configPath, config);
-      console.log(`Token refreshed for profile "${profileName}".`);
+      await saveOAuthTokens(
+        {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken ?? existingRefreshToken,
+          tokenExpiresAt: expiry,
+        },
+        writeOpts,
+      );
+      await saveOAuthClientCredentials({ clientId, clientSecret }, writeOpts);
+      const label = profileFlag ?? "default";
+      console.log(`Token refreshed for profile "${label}".`);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Token refresh failed: ${message}. ` + 'Run "linkedctl auth login" to re-authenticate.');

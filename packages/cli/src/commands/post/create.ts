@@ -39,11 +39,11 @@ export async function createPostAction(textOpt: string | undefined, opts: Create
   const text = await resolveText(textOpt);
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
 
-  const config = await resolveConfig({ profile: globals.profile });
-  const client = new LinkedInClient({
-    accessToken: config.accessToken,
-    apiVersion: config.apiVersion,
-  });
+  const { config } = await resolveConfig({ profile: globals.profile });
+  // resolveConfig guarantees oauth.accessToken and apiVersion are defined
+  const accessToken = config.oauth?.accessToken ?? "";
+  const apiVersion = config.apiVersion ?? "";
+  const client = new LinkedInClient({ accessToken, apiVersion });
 
   const authorUrn = await getCurrentPersonUrn(client);
 

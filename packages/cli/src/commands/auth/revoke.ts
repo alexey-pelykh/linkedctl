@@ -2,14 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command } from "commander";
-import {
-  getDefaultConfigPath,
-  readConfigFile,
-  writeConfigFile,
-  getProfile,
-  clearProfileCredentials,
-  revokeAccessToken,
-} from "@linkedctl/core";
+import { loadConfigFile, validateConfig, clearOAuthTokens, revokeAccessToken } from "@linkedctl/core";
 
 export function revokeCommand(): Command {
   const cmd = new Command("revoke");
@@ -17,42 +10,35 @@ export function revokeCommand(): Command {
 
   cmd.action(async (_opts: Record<string, unknown>, actionCmd: Command) => {
     const rootOpts = actionCmd.optsWithGlobals();
-    const configPath = getDefaultConfigPath();
-    const config = await readConfigFile(configPath);
-
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;
-    const profileName = profileFlag ?? config["default-profile"] ?? "default";
-    const profile = getProfile(config, profileName);
 
-    if (profile === undefined) {
-      throw new Error(`Profile "${profileName}" not found.`);
-    }
+    const { raw } = await loadConfigFile({ profile: profileFlag });
+    const { config } = validateConfig(raw);
 
-    const accessToken = profile["access-token"];
-    const clientId = profile["client-id"];
-    const clientSecret = profile["client-secret"];
+    const accessToken = config.oauth?.accessToken;
+    const clientId = config.oauth?.clientId;
+    const clientSecret = config.oauth?.clientSecret;
+    const label = profileFlag ?? "default";
 
-    if (accessToken === "" || clientId === undefined || clientSecret === undefined) {
-      const updated = clearProfileCredentials(config, profileName);
-      await writeConfigFile(configPath, updated);
+    if (accessToken === undefined || accessToken === "" || clientId === undefined || clientSecret === undefined) {
+      await clearOAuthTokens({ profile: profileFlag });
       console.log(
-        `No complete credentials for server-side revocation (missing access token, client ID, or client secret). Local credentials cleared for profile "${profileName}".`,
+        `No complete credentials for server-side revocation (missing access token, client ID, or client secret). Local credentials cleared for profile "${label}".`,
       );
       return;
     }
 
     try {
       await revokeAccessToken(clientId, clientSecret, accessToken);
-      console.log(`Access token revoked server-side for profile "${profileName}".`);
+      console.log(`Access token revoked server-side for profile "${label}".`);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(`Warning: Server-side revocation failed: ${message}`);
       console.warn("Local credentials will still be cleared.");
     }
 
-    const updated = clearProfileCredentials(config, profileName);
-    await writeConfigFile(configPath, updated);
-    console.log(`Local credentials cleared for profile "${profileName}".`);
+    await clearOAuthTokens({ profile: profileFlag });
+    console.log(`Local credentials cleared for profile "${label}".`);
   });
 
   return cmd;

@@ -1,57 +1,94 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
-import { rm } from "node:fs/promises";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { writeConfigFile } from "@linkedctl/core";
-import * as configFile from "@linkedctl/core";
 import { listCommand } from "./list.js";
 
-vi.mock("@linkedctl/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof configFile>();
-  return { ...actual };
+vi.mock("node:os", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:os")>();
+  return {
+    ...actual,
+    homedir: vi.fn().mockReturnValue("/mock/home"),
+  };
 });
 
-function tempConfigPath(): string {
-  return join(tmpdir(), `linkedctl-test-${randomUUID()}`, "config.yaml");
-}
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    readdir: vi.fn().mockResolvedValue([]),
+  };
+});
+
+const { homedir } = await import("node:os");
+const { readdir } = await import("node:fs/promises");
 
 describe("profile list", () => {
-  let configPath: string;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    configPath = tempConfigPath();
-    vi.spyOn(configFile, "getDefaultConfigPath").mockReturnValue(configPath);
+    vi.clearAllMocks();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.mocked(homedir).mockReturnValue("/mock/home");
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.restoreAllMocks();
-    await rm(join(configPath, ".."), { recursive: true, force: true });
   });
 
-  it("shows message when no profiles exist", async () => {
+  it("shows message when config dir does not exist", async () => {
+    const enoent = new Error("ENOENT") as NodeJS.ErrnoException;
+    enoent.code = "ENOENT";
+    vi.mocked(readdir).mockRejectedValue(enoent);
+
     const cmd = listCommand();
     await cmd.parseAsync([], { from: "user" });
+
     expect(consoleSpy).toHaveBeenCalledWith("No profiles configured.");
   });
 
-  it("lists profiles with default marker", async () => {
-    await writeConfigFile(configPath, {
-      "default-profile": "personal",
-      profiles: {
-        personal: { "access-token": "t1", "api-version": "v" },
-        work: { "access-token": "t2", "api-version": "v" },
-      },
-    });
+  it("shows message when no yaml files exist", async () => {
+    vi.mocked(readdir).mockResolvedValue([] as unknown as Awaited<ReturnType<typeof readdir>>);
 
     const cmd = listCommand();
     await cmd.parseAsync([], { from: "user" });
-    expect(consoleSpy).toHaveBeenCalledWith("personal (default)");
+
+    expect(consoleSpy).toHaveBeenCalledWith("No profiles configured.");
+  });
+
+  it("lists profile names from yaml files", async () => {
+    vi.mocked(readdir).mockResolvedValue([
+      "personal.yaml",
+      "work.yaml",
+    ] as unknown as Awaited<ReturnType<typeof readdir>>);
+
+    const cmd = listCommand();
+    await cmd.parseAsync([], { from: "user" });
+
+    expect(consoleSpy).toHaveBeenCalledWith("personal");
     expect(consoleSpy).toHaveBeenCalledWith("work");
+  });
+
+  it("ignores non-yaml files", async () => {
+    vi.mocked(readdir).mockResolvedValue([
+      "personal.yaml",
+      "notes.txt",
+      ".DS_Store",
+    ] as unknown as Awaited<ReturnType<typeof readdir>>);
+
+    const cmd = listCommand();
+    await cmd.parseAsync([], { from: "user" });
+
+    expect(consoleSpy).toHaveBeenCalledWith("personal");
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-throws unexpected filesystem errors", async () => {
+    const ioError = new Error("I/O error") as NodeJS.ErrnoException;
+    ioError.code = "EIO";
+    vi.mocked(readdir).mockRejectedValue(ioError);
+
+    const cmd = listCommand();
+    await expect(cmd.parseAsync([], { from: "user" })).rejects.toThrow(/I\/O error/);
   });
 });

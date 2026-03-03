@@ -2,22 +2,27 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 export {
-  getDefaultConfigPath,
-  readConfigFile,
-  writeConfigFile,
-  listProfiles,
-  getProfile,
-  setProfile,
-  deleteProfile,
-  setDefaultProfile,
-  redactProfile,
-  clearProfileCredentials,
-} from "./config/config-file.js";
+  loadConfigFile,
+  CONFIG_DIR,
+  validateConfig,
+  isValidProfileName,
+  applyEnvOverlay,
+  saveOAuthTokens,
+  saveOAuthClientCredentials,
+  clearOAuthTokens,
+  resolveConfig,
+  ConfigError,
+} from "./config/index.js";
+export type {
+  OAuthCredentials,
+  LinkedctlConfig,
+  ConfigResult,
+  ResolveOptions,
+  LoadResult,
+  ValidationResult,
+} from "./config/index.js";
 export { getTokenExpiry } from "./auth/token-introspection.js";
 export type { TokenExpiry } from "./auth/token-introspection.js";
-export { resolveConfig } from "./config/config-resolver.js";
-export type { CliOverrides, EnvOverrides } from "./config/config-resolver.js";
-export type { ConfigFile, Profile, ResolvedConfig } from "./config/types.js";
 export { LinkedInApiError, LinkedInAuthError, LinkedInRateLimitError, LinkedInServerError } from "./http/errors.js";
 export { LinkedInClient } from "./http/linkedin-client.js";
 export type { LinkedInClientOptions } from "./http/linkedin-client.js";

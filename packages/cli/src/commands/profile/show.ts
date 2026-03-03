@@ -2,7 +2,14 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command } from "commander";
-import { getDefaultConfigPath, readConfigFile, getProfile, redactProfile } from "@linkedctl/core";
+import { loadConfigFile, validateConfig, isValidProfileName } from "@linkedctl/core";
+
+function redactSecret(value: string): string {
+  if (value.length <= 8) {
+    return "****";
+  }
+  return value.slice(0, 4) + "****" + value.slice(-4);
+}
 
 export function showCommand(): Command {
   const cmd = new Command("show");
@@ -10,19 +17,39 @@ export function showCommand(): Command {
   cmd.argument("<name>", "profile name");
 
   cmd.action(async (name: string) => {
-    const config = await readConfigFile(getDefaultConfigPath());
-    const profile = getProfile(config, name);
+    if (!isValidProfileName(name)) {
+      throw new Error(`Invalid profile name "${name}".`);
+    }
 
-    if (profile === undefined) {
+    const { raw, path } = await loadConfigFile({ profile: name });
+    if (path === undefined) {
       throw new Error(`Profile "${name}" not found.`);
     }
 
-    const redacted = redactProfile(profile);
-    const isDefault = config["default-profile"] === name;
+    const { config } = validateConfig(raw);
 
-    console.log(`Profile: ${name}${isDefault ? " (default)" : ""}`);
-    for (const [key, value] of Object.entries(redacted)) {
-      console.log(`  ${key}: ${value}`);
+    console.log(`Profile: ${name}`);
+
+    if (config.oauth !== undefined) {
+      if (config.oauth.clientId !== undefined) {
+        console.log(`  client-id: ${redactSecret(config.oauth.clientId)}`);
+      }
+      if (config.oauth.clientSecret !== undefined) {
+        console.log(`  client-secret: ${redactSecret(config.oauth.clientSecret)}`);
+      }
+      if (config.oauth.accessToken !== undefined) {
+        console.log(`  access-token: ${redactSecret(config.oauth.accessToken)}`);
+      }
+      if (config.oauth.refreshToken !== undefined) {
+        console.log(`  refresh-token: ${redactSecret(config.oauth.refreshToken)}`);
+      }
+      if (config.oauth.tokenExpiresAt !== undefined) {
+        console.log(`  token-expires-at: ${config.oauth.tokenExpiresAt}`);
+      }
+    }
+
+    if (config.apiVersion !== undefined) {
+      console.log(`  api-version: ${config.apiVersion}`);
     }
   });
 

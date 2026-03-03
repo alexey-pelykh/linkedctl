@@ -15,11 +15,11 @@ export function whoamiCommand(): Command {
     const rootOpts = actionCmd.optsWithGlobals();
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;
 
-    const config = await resolveConfig({ profile: profileFlag });
-    const client = new LinkedInClient({
-      accessToken: config.accessToken,
-      apiVersion: config.apiVersion,
-    });
+    const { config } = await resolveConfig({ profile: profileFlag });
+    // resolveConfig guarantees oauth.accessToken and apiVersion are defined
+    const accessToken = config.oauth?.accessToken ?? "";
+    const apiVersion = config.apiVersion ?? "";
+    const client = new LinkedInClient({ accessToken, apiVersion });
 
     const userInfo = await getUserInfo(client);
 
