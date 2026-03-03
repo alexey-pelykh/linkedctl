@@ -131,9 +131,7 @@ describe("exchangeAuthorizationCode", () => {
   });
 
   it("omits code_verifier when not provided", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }),
-    );
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }));
 
     await exchangeAuthorizationCode(OAUTH2_CONFIG, "code");
 
@@ -143,9 +141,7 @@ describe("exchangeAuthorizationCode", () => {
   });
 
   it("includes code_verifier when provided", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }),
-    );
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }));
 
     await exchangeAuthorizationCode(OAUTH2_CONFIG, "code", "my-verifier");
 
