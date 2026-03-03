@@ -10,8 +10,11 @@ import {
   createTextPost,
   getDefaultConfigPath,
   readConfigFile,
+  writeConfigFile,
   getProfile,
   getTokenExpiry,
+  clearProfileCredentials,
+  revokeAccessToken,
 } from "@linkedctl/core";
 
 /**
@@ -114,6 +117,72 @@ export function createMcpServer(): McpServer {
             text: `Profile: ${profileName}\nStatus: authenticated\nExpires: ${expiry.expiresAt.toISOString()}`,
           },
         ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "auth_revoke",
+    {
+      title: "Revoke Auth Token",
+      description: "Revoke the access token server-side and clear local credentials for a profile",
+      inputSchema: {
+        profile: z.string().optional().describe("Profile name to revoke (uses default if not specified)"),
+      },
+    },
+    async (args) => {
+      const configPath = getDefaultConfigPath();
+      const config = await readConfigFile(configPath);
+
+      const profileName = args.profile ?? config["default-profile"] ?? "default";
+      const profile = getProfile(config, profileName);
+
+      if (profile === undefined) {
+        return {
+          content: [{ type: "text" as const, text: `Profile "${profileName}" not found.` }],
+          isError: true,
+        };
+      }
+
+      const accessToken = profile["access-token"];
+      const clientId = profile["client-id"];
+      const clientSecret = profile["client-secret"];
+
+      if (accessToken === "" || clientId === undefined || clientSecret === undefined) {
+        const updated = clearProfileCredentials(config, profileName);
+        await writeConfigFile(configPath, updated);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `No complete credentials for server-side revocation. Local credentials cleared for profile "${profileName}".`,
+            },
+          ],
+        };
+      }
+
+      let serverRevoked = true;
+      let warning = "";
+      try {
+        await revokeAccessToken(clientId, clientSecret, accessToken);
+      } catch (error: unknown) {
+        serverRevoked = false;
+        warning = error instanceof Error ? error.message : String(error);
+      }
+
+      const updated = clearProfileCredentials(config, profileName);
+      await writeConfigFile(configPath, updated);
+
+      const lines: string[] = [];
+      if (serverRevoked) {
+        lines.push(`Access token revoked server-side for profile "${profileName}".`);
+      } else {
+        lines.push(`Warning: Server-side revocation failed: ${warning}`);
+      }
+      lines.push(`Local credentials cleared for profile "${profileName}".`);
+
+      return {
+        content: [{ type: "text" as const, text: lines.join("\n") }],
       };
     },
   );
