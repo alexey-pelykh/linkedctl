@@ -44,6 +44,35 @@ export class LinkedInClient {
    * exponential backoff, and throws typed errors for known failure modes.
    */
   async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await this.sendRequest(path, init);
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    return (await response.json()) as T;
+  }
+
+  /**
+   * Create a resource via POST and return the ID from the `x-restli-id`
+   * response header (standard LinkedIn REST.li create pattern).
+   */
+  async create(path: string, body: unknown): Promise<string> {
+    const response = await this.sendRequest(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const id = response.headers.get("x-restli-id");
+    if (id === null) {
+      throw new LinkedInApiError("No resource ID in response", response.status);
+    }
+    return id;
+  }
+
+  /**
+   * Execute an HTTP request with retry logic and error handling.
+   * Returns the raw successful Response.
+   */
+  private async sendRequest(path: string, init?: RequestInit): Promise<Response> {
     const url = `${this.baseUrl}${path}`;
     const headers = this.buildHeaders(init?.headers);
 
@@ -58,10 +87,7 @@ export class LinkedInClient {
       const response = await fetch(url, { ...init, headers });
 
       if (response.ok) {
-        if (response.status === 204) {
-          return undefined as T;
-        }
-        return (await response.json()) as T;
+        return response;
       }
 
       const body = await this.tryReadBody(response);

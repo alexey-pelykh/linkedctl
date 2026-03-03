@@ -25,3 +25,7 @@ export { buildAuthorizationUrl, exchangeAuthorizationCode, refreshAccessToken } 
 export type { OAuth2Config, OAuth2TokenResponse } from "./oauth2/types.js";
 export { getUserInfo } from "./userinfo/userinfo.js";
 export type { UserInfo } from "./userinfo/userinfo.js";
+export { getCurrentPersonUrn } from "./userinfo/userinfo-service.js";
+export { createTextPost } from "./posts/posts-service.js";
+export type { CreateTextPostOptions } from "./posts/posts-service.js";
+export type { PostVisibility } from "./posts/types.js";
