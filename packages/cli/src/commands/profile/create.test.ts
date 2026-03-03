@@ -50,7 +50,7 @@ describe("profile create", () => {
     expect(config["default-profile"]).toBe("personal");
   });
 
-  it("sets file permissions to 0600", async () => {
+  it.skipIf(process.platform === "win32")("sets file permissions to 0600", async () => {
     const cmd = createCommand();
     await cmd.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" });
 
