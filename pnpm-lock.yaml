@@ -166,6 +166,9 @@ importers:
       "@linkedctl/mcp":
         specifier: workspace:^
         version: link:../mcp
+      commander:
+        specifier: "catalog:"
+        version: 14.0.3
     devDependencies:
       "@types/node":
         specifier: "catalog:"
