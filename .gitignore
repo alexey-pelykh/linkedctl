@@ -1,5 +1,6 @@
 ## Project-specific
 .linkedctl.yaml
+.linkedctl-e2e.yaml
 *.local.*
 build/
 .tmp/

@@ -22,6 +22,7 @@
     "@linkedctl/cli": "workspace:^",
     "@linkedctl/core": "workspace:^",
     "@linkedctl/mcp": "workspace:^",
+    "yaml": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
