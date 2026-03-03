@@ -8,9 +8,10 @@ const TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
 
 /**
  * Build the LinkedIn OAuth2 authorization URL that the user should open in
- * their browser. Includes a `state` parameter for CSRF protection.
+ * their browser. Includes a `state` parameter for CSRF protection and
+ * optional PKCE `code_challenge` (S256).
  */
-export function buildAuthorizationUrl(config: OAuth2Config, state: string): string {
+export function buildAuthorizationUrl(config: OAuth2Config, state: string, codeChallenge?: string): string {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: config.clientId,
@@ -18,13 +19,22 @@ export function buildAuthorizationUrl(config: OAuth2Config, state: string): stri
     scope: config.scope,
     state,
   });
+  if (codeChallenge !== undefined) {
+    params.set("code_challenge", codeChallenge);
+    params.set("code_challenge_method", "S256");
+  }
   return `${AUTHORIZATION_URL}?${params.toString()}`;
 }
 
 /**
  * Exchange an authorization code for access and (optional) refresh tokens.
+ * When PKCE was used during authorization, `codeVerifier` must be provided.
  */
-export async function exchangeAuthorizationCode(config: OAuth2Config, code: string): Promise<OAuth2TokenResponse> {
+export async function exchangeAuthorizationCode(
+  config: OAuth2Config,
+  code: string,
+  codeVerifier?: string,
+): Promise<OAuth2TokenResponse> {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -32,6 +42,9 @@ export async function exchangeAuthorizationCode(config: OAuth2Config, code: stri
     client_id: config.clientId,
     client_secret: config.clientSecret,
   });
+  if (codeVerifier !== undefined) {
+    body.set("code_verifier", codeVerifier);
+  }
 
   return tokenRequest(body);
 }

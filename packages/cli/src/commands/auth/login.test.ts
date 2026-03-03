@@ -212,6 +212,29 @@ describe("auth login", () => {
     expect(config.profiles?.["default"]?.["client-secret"]).toBe("override-secret");
   });
 
+  it("generates PKCE code challenge and verifier during full OAuth flow", async () => {
+    const { exchangeSpy } = mockFullOAuthFlow();
+
+    const buildAuthSpy = vi.spyOn(oauth2, "buildAuthorizationUrl");
+
+    const program = wrapInProgram(loginCommand());
+    await program.parseAsync(["auth", "login", "--client-id", "my-client-id", "--client-secret", "my-client-secret"], {
+      from: "user",
+    });
+
+    // Verify buildAuthorizationUrl was called with a code challenge (3rd argument)
+    expect(buildAuthSpy).toHaveBeenCalledOnce();
+    const codeChallenge = buildAuthSpy.mock.calls[0]?.[2];
+    expect(codeChallenge).toBeDefined();
+    expect(typeof codeChallenge).toBe("string");
+
+    // Verify exchangeAuthorizationCode was called with a code verifier (3rd argument)
+    expect(exchangeSpy).toHaveBeenCalledOnce();
+    const codeVerifier = exchangeSpy.mock.calls[0]?.[2];
+    expect(codeVerifier).toBeDefined();
+    expect(typeof codeVerifier).toBe("string");
+  });
+
   it("proceeds directly to full auth when no refresh token available", async () => {
     // Profile without refresh token (common for Community Management API)
     await configFile.writeConfigFile(
