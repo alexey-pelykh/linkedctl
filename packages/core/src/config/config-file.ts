@@ -113,13 +113,47 @@ export function setDefaultProfile(config: ConfigFile, name: string): ConfigFile 
 }
 
 /**
+ * Redact a single secret value for display.
+ */
+function redactSecret(value: string): string {
+  return value.length > 8 ? value.slice(0, 4) + "****" + value.slice(-4) : "****";
+}
+
+/**
  * Redact secrets from a profile for display.
  */
 export function redactProfile(profile: Profile): Record<string, string> {
-  const token = profile["access-token"];
-  const redacted = token.length > 8 ? token.slice(0, 4) + "****" + token.slice(-4) : "****";
-  return {
-    "access-token": redacted,
+  const result: Record<string, string> = {
+    "access-token": redactSecret(profile["access-token"]),
     "api-version": profile["api-version"],
+  };
+  if (profile["refresh-token"] !== undefined) {
+    result["refresh-token"] = redactSecret(profile["refresh-token"]);
+  }
+  return result;
+}
+
+/**
+ * Remove credentials (access token and refresh token) from a profile,
+ * preserving non-secret settings like `api-version`.
+ * Returns a **new** `ConfigFile` — the original is not mutated.
+ */
+export function clearProfileCredentials(config: ConfigFile, name: string): ConfigFile {
+  const profile = config.profiles?.[name];
+  if (profile === undefined) {
+    return config;
+  }
+
+  const cleared: Profile = {
+    "access-token": "",
+    "api-version": profile["api-version"],
+  };
+
+  return {
+    ...config,
+    profiles: {
+      ...config.profiles,
+      [name]: cleared,
+    },
   };
 }

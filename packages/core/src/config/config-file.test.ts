@@ -15,6 +15,7 @@ import {
   deleteProfile,
   setDefaultProfile,
   redactProfile,
+  clearProfileCredentials,
   getDefaultConfigPath,
 } from "./config-file.js";
 import type { ConfigFile, Profile } from "./types.js";
@@ -245,5 +246,70 @@ describe("redactProfile", () => {
     const profile: Profile = { "access-token": "12345678", "api-version": "202501" };
     const result = redactProfile(profile);
     expect(result["access-token"]).toBe("****");
+  });
+
+  it("includes redacted refresh token when present", () => {
+    const profile: Profile = {
+      "access-token": "abcd1234efgh5678",
+      "refresh-token": "refr1234wxyz5678",
+      "api-version": "202501",
+    };
+    const result = redactProfile(profile);
+    expect(result["access-token"]).toBe("abcd****5678");
+    expect(result["refresh-token"]).toBe("refr****5678");
+  });
+
+  it("omits refresh token when not present", () => {
+    const profile: Profile = { "access-token": "abcd1234efgh5678", "api-version": "202501" };
+    const result = redactProfile(profile);
+    expect(result["refresh-token"]).toBeUndefined();
+  });
+});
+
+describe("clearProfileCredentials", () => {
+  it("clears access token and removes refresh token", () => {
+    const config: ConfigFile = {
+      profiles: {
+        test: { "access-token": "secret", "refresh-token": "refresh-secret", "api-version": "202501" },
+      },
+    };
+    const result = clearProfileCredentials(config, "test");
+    expect(result.profiles?.["test"]?.["access-token"]).toBe("");
+    expect(result.profiles?.["test"]?.["refresh-token"]).toBeUndefined();
+    expect(result.profiles?.["test"]?.["api-version"]).toBe("202501");
+  });
+
+  it("preserves api-version after clearing", () => {
+    const config: ConfigFile = {
+      profiles: { test: { "access-token": "tok", "api-version": "202502" } },
+    };
+    const result = clearProfileCredentials(config, "test");
+    expect(result.profiles?.["test"]?.["api-version"]).toBe("202502");
+  });
+
+  it("returns unchanged config when profile does not exist", () => {
+    const config: ConfigFile = { profiles: {} };
+    const result = clearProfileCredentials(config, "nonexistent");
+    expect(result).toEqual(config);
+  });
+
+  it("does not mutate the original config", () => {
+    const config: ConfigFile = {
+      profiles: { test: { "access-token": "secret", "api-version": "v" } },
+    };
+    clearProfileCredentials(config, "test");
+    expect(config.profiles?.["test"]?.["access-token"]).toBe("secret");
+  });
+
+  it("preserves other profiles", () => {
+    const config: ConfigFile = {
+      profiles: {
+        a: { "access-token": "tok-a", "api-version": "v" },
+        b: { "access-token": "tok-b", "api-version": "v" },
+      },
+    };
+    const result = clearProfileCredentials(config, "a");
+    expect(result.profiles?.["a"]?.["access-token"]).toBe("");
+    expect(result.profiles?.["b"]?.["access-token"]).toBe("tok-b");
   });
 });
