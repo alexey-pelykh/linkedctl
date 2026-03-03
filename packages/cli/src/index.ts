@@ -3,3 +3,4 @@
 
 export type { OutputFormat } from "./output/index.js";
 export { detectFormat, resolveFormat, formatJson, formatTable, formatOutput } from "./output/index.js";
+export { createProgram } from "./program.js";
