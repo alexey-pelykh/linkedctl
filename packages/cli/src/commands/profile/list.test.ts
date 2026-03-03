@@ -57,10 +57,9 @@ describe("profile list", () => {
   });
 
   it("lists profile names from yaml files", async () => {
-    vi.mocked(readdir).mockResolvedValue([
-      "personal.yaml",
-      "work.yaml",
-    ] as unknown as Awaited<ReturnType<typeof readdir>>);
+    vi.mocked(readdir).mockResolvedValue(["personal.yaml", "work.yaml"] as unknown as Awaited<
+      ReturnType<typeof readdir>
+    >);
 
     const cmd = listCommand();
     await cmd.parseAsync([], { from: "user" });
@@ -70,11 +69,9 @@ describe("profile list", () => {
   });
 
   it("ignores non-yaml files", async () => {
-    vi.mocked(readdir).mockResolvedValue([
-      "personal.yaml",
-      "notes.txt",
-      ".DS_Store",
-    ] as unknown as Awaited<ReturnType<typeof readdir>>);
+    vi.mocked(readdir).mockResolvedValue(["personal.yaml", "notes.txt", ".DS_Store"] as unknown as Awaited<
+      ReturnType<typeof readdir>
+    >);
 
     const cmd = listCommand();
     await cmd.parseAsync([], { from: "user" });

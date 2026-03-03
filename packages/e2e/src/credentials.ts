@@ -41,12 +41,7 @@ export function getCredentials(): E2ECredentials {
   const envAccessToken = process.env["LINKEDCTL_ACCESS_TOKEN"];
   const envApiVersion = process.env["LINKEDCTL_API_VERSION"];
 
-  if (
-    envAccessToken !== undefined &&
-    envAccessToken !== "" &&
-    envApiVersion !== undefined &&
-    envApiVersion !== ""
-  ) {
+  if (envAccessToken !== undefined && envAccessToken !== "" && envApiVersion !== undefined && envApiVersion !== "") {
     return { accessToken: envAccessToken, apiVersion: envApiVersion };
   }
 
