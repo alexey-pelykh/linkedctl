@@ -73,9 +73,7 @@ export function refreshCommand(): Command {
       console.log(`Token refreshed for profile "${profileName}".`);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Token refresh failed: ${message}. ` + 'Run "linkedctl auth login" to re-authenticate.',
-      );
+      throw new Error(`Token refresh failed: ${message}. ` + 'Run "linkedctl auth login" to re-authenticate.');
     }
   });
 
