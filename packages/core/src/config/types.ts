@@ -6,6 +6,7 @@
  */
 export interface Profile {
   "access-token": string;
+  "refresh-token"?: string | undefined;
   "api-version": string;
 }
 

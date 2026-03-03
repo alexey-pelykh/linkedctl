@@ -11,7 +11,10 @@ export {
   deleteProfile,
   setDefaultProfile,
   redactProfile,
+  clearProfileCredentials,
 } from "./config/config-file.js";
+export { getTokenExpiry } from "./auth/token-introspection.js";
+export type { TokenExpiry } from "./auth/token-introspection.js";
 export { resolveConfig } from "./config/config-resolver.js";
 export type { CliOverrides, EnvOverrides } from "./config/config-resolver.js";
 export type { ConfigFile, Profile, ResolvedConfig } from "./config/types.js";
