@@ -2,7 +2,12 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildAuthorizationUrl, exchangeAuthorizationCode, refreshAccessToken, revokeAccessToken } from "./oauth2-client.js";
+import {
+  buildAuthorizationUrl,
+  exchangeAuthorizationCode,
+  refreshAccessToken,
+  revokeAccessToken,
+} from "./oauth2-client.js";
 import type { OAuth2Config } from "./types.js";
 
 function jsonResponse(body: unknown, status = 200): Response {
