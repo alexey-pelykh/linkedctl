@@ -127,8 +127,17 @@ export function redactProfile(profile: Profile): Record<string, string> {
     "access-token": redactSecret(profile["access-token"]),
     "api-version": profile["api-version"],
   };
+  if (profile["client-id"] !== undefined) {
+    result["client-id"] = profile["client-id"];
+  }
+  if (profile["client-secret"] !== undefined) {
+    result["client-secret"] = redactSecret(profile["client-secret"]);
+  }
   if (profile["refresh-token"] !== undefined) {
     result["refresh-token"] = redactSecret(profile["refresh-token"]);
+  }
+  if (profile["token-expiry"] !== undefined) {
+    result["token-expiry"] = profile["token-expiry"];
   }
   return result;
 }
