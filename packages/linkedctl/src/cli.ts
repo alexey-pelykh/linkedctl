@@ -2,4 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-export {};
+import { createProgram } from "@linkedctl/cli";
+
+const program = createProgram();
+await program.parseAsync(process.argv);

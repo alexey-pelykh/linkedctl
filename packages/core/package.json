@@ -45,6 +45,9 @@
     "lint": "eslint src/",
     "dev": "tsc --watch"
   },
+  "dependencies": {
+    "yaml": "catalog:"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "eslint": "catalog:",
