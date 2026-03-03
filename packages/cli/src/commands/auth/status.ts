@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command } from "commander";
-import { getDefaultConfigPath, readConfigFile, getProfile, getTokenExpiry } from "@linkedctl/core";
+import { loadConfigFile, validateConfig, getTokenExpiry } from "@linkedctl/core";
 
 /**
  * Format remaining time until token expiry as a human-readable string.
@@ -30,23 +30,22 @@ export function statusCommand(): Command {
 
   cmd.action(async (_opts: Record<string, unknown>, actionCmd: Command) => {
     const rootOpts = actionCmd.optsWithGlobals();
-    const configPath = getDefaultConfigPath();
-    const config = await readConfigFile(configPath);
-
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;
-    const profileName = profileFlag ?? config["default-profile"] ?? "default";
-    const profile = getProfile(config, profileName);
 
-    if (profile === undefined || profile["access-token"] === "") {
-      console.log(`Profile: ${profileName}`);
+    const { raw } = await loadConfigFile({ profile: profileFlag });
+    const { config } = validateConfig(raw);
+    const label = profileFlag ?? "default";
+
+    if (config.oauth?.accessToken === undefined || config.oauth.accessToken === "") {
+      console.log(`Profile: ${label}`);
       console.log("Status: not configured");
-      console.log('Run "linkedctl profile create" to set up authentication.');
+      console.log('Run "linkedctl auth login" to set up authentication.');
       return;
     }
 
-    const expiry = getTokenExpiry(profile["access-token"]);
+    const expiry = getTokenExpiry(config.oauth.accessToken);
 
-    console.log(`Profile: ${profileName}`);
+    console.log(`Profile: ${label}`);
 
     if (expiry === undefined) {
       console.log("Status: authenticated");
@@ -57,7 +56,7 @@ export function statusCommand(): Command {
     if (expiry.isExpired) {
       console.log("Status: expired");
       console.log(`Expired: ${expiry.expiresAt.toISOString()}`);
-      console.log('Run "linkedctl profile create" with a new --access-token to re-authenticate.');
+      console.log('Run "linkedctl auth login" to re-authenticate.');
       return;
     }
 

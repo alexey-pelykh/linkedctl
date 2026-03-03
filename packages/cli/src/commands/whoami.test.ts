@@ -28,9 +28,11 @@ describe("whoami", () => {
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     resolveConfigSpy = vi.spyOn(core, "resolveConfig").mockResolvedValue({
-      accessToken: "test-token",
-      apiVersion: "202501",
-      profile: "default",
+      config: {
+        oauth: { accessToken: "test-token" },
+        apiVersion: "202501",
+      },
+      warnings: [],
     });
     getUserInfoSpy = vi.spyOn(core, "getUserInfo").mockResolvedValue(SAMPLE_USERINFO);
   });

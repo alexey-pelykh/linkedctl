@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { parse } from "yaml";
 
-const CONFIG_FILENAME = ".linkedctl-e2e.yaml";
+const CONFIG_FILE = ".linkedctl.yaml";
 
 export interface E2ECredentials {
   accessToken: string;
@@ -13,55 +13,64 @@ export interface E2ECredentials {
 }
 
 /**
- * Search upward from `cwd` for a `.linkedctl-e2e.yaml` configuration file.
- * Returns the absolute path if found, or `undefined` otherwise.
- */
-function findConfigFile(from: string = process.cwd()): string | undefined {
-  let dir = resolve(from);
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  while (true) {
-    const candidate = join(dir, CONFIG_FILENAME);
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) {
-      return undefined;
-    }
-    dir = parent;
-  }
-}
-
-/**
- * Returns `true` when a `.linkedctl-e2e.yaml` file is reachable from the
- * current working directory (searching upward).
+ * Returns `true` when E2E credentials are available via environment variables
+ * or a `.linkedctl.yaml` file in the current working directory.
  */
 export function hasCredentials(): boolean {
-  return findConfigFile() !== undefined;
+  if (
+    process.env["LINKEDCTL_ACCESS_TOKEN"] !== undefined &&
+    process.env["LINKEDCTL_ACCESS_TOKEN"] !== "" &&
+    process.env["LINKEDCTL_API_VERSION"] !== undefined &&
+    process.env["LINKEDCTL_API_VERSION"] !== ""
+  ) {
+    return true;
+  }
+
+  return existsSync(join(process.cwd(), CONFIG_FILE));
 }
 
 /**
- * Read and parse E2E credentials from the nearest `.linkedctl-e2e.yaml`.
+ * Read E2E credentials from environment variables or `.linkedctl.yaml`.
  *
- * @throws if the file is missing or does not contain the required fields.
+ * Priority: env vars > CWD `.linkedctl.yaml`
+ *
+ * @throws if credentials are not available.
  */
 export function getCredentials(): E2ECredentials {
-  const configPath = findConfigFile();
-  if (configPath === undefined) {
-    throw new Error(`No ${CONFIG_FILENAME} found. Create one with "access-token" and "api-version" fields.`);
+  // Try environment variables first
+  const envAccessToken = process.env["LINKEDCTL_ACCESS_TOKEN"];
+  const envApiVersion = process.env["LINKEDCTL_API_VERSION"];
+
+  if (
+    envAccessToken !== undefined &&
+    envAccessToken !== "" &&
+    envApiVersion !== undefined &&
+    envApiVersion !== ""
+  ) {
+    return { accessToken: envAccessToken, apiVersion: envApiVersion };
+  }
+
+  // Fall back to CWD .linkedctl.yaml
+  const configPath = join(process.cwd(), CONFIG_FILE);
+  if (!existsSync(configPath)) {
+    throw new Error(
+      `No E2E credentials found. Set LINKEDCTL_ACCESS_TOKEN and LINKEDCTL_API_VERSION env vars, ` +
+        `or create a ${CONFIG_FILE} file.`,
+    );
   }
 
   const raw = readFileSync(configPath, "utf8");
   const config = parse(raw) as Record<string, unknown>;
+  const oauth = config["oauth"] as Record<string, unknown> | undefined;
 
-  const accessToken = config["access-token"];
+  const accessToken = oauth?.["access-token"];
   const apiVersion = config["api-version"];
 
   if (typeof accessToken !== "string" || accessToken === "") {
-    throw new Error(`${CONFIG_FILENAME}: "access-token" is required and must be a non-empty string.`);
+    throw new Error(`${CONFIG_FILE}: "oauth.access-token" is required and must be a non-empty string.`);
   }
   if (typeof apiVersion !== "string" || apiVersion === "") {
-    throw new Error(`${CONFIG_FILENAME}: "api-version" is required and must be a non-empty string.`);
+    throw new Error(`${CONFIG_FILE}: "api-version" is required and must be a non-empty string.`);
   }
 
   return { accessToken, apiVersion };

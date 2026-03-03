@@ -8,12 +8,10 @@ import {
   LinkedInClient,
   getCurrentPersonUrn,
   createTextPost,
-  getDefaultConfigPath,
-  readConfigFile,
-  writeConfigFile,
-  getProfile,
+  loadConfigFile,
+  validateConfig,
   getTokenExpiry,
-  clearProfileCredentials,
+  clearOAuthTokens,
   revokeAccessToken,
 } from "@linkedctl/core";
 
@@ -38,11 +36,11 @@ export function createMcpServer(): McpServer {
       },
     },
     async (args) => {
-      const config = await resolveConfig({ profile: args.profile });
-      const client = new LinkedInClient({
-        accessToken: config.accessToken,
-        apiVersion: config.apiVersion,
-      });
+      const { config } = await resolveConfig({ profile: args.profile });
+      // resolveConfig guarantees oauth.accessToken and apiVersion are defined
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
 
       const authorUrn = await getCurrentPersonUrn(client);
       const visibility = args.visibility ?? "PUBLIC";
@@ -69,31 +67,29 @@ export function createMcpServer(): McpServer {
       },
     },
     async (args) => {
-      const configPath = getDefaultConfigPath();
-      const config = await readConfigFile(configPath);
+      const { raw } = await loadConfigFile({ profile: args.profile });
+      const { config } = validateConfig(raw);
+      const label = args.profile ?? "default";
 
-      const profileName = args.profile ?? config["default-profile"] ?? "default";
-      const profile = getProfile(config, profileName);
-
-      if (profile === undefined || profile["access-token"] === "") {
+      if (config.oauth?.accessToken === undefined || config.oauth.accessToken === "") {
         return {
           content: [
             {
               type: "text" as const,
-              text: `Profile: ${profileName}\nStatus: not configured\nRun "linkedctl profile create" to set up authentication.`,
+              text: `Profile: ${label}\nStatus: not configured\nRun "linkedctl auth login" to set up authentication.`,
             },
           ],
         };
       }
 
-      const expiry = getTokenExpiry(profile["access-token"]);
+      const expiry = getTokenExpiry(config.oauth.accessToken);
 
       if (expiry === undefined) {
         return {
           content: [
             {
               type: "text" as const,
-              text: `Profile: ${profileName}\nStatus: authenticated\nExpiry: unknown (token is not a JWT)`,
+              text: `Profile: ${label}\nStatus: authenticated\nExpiry: unknown (token is not a JWT)`,
             },
           ],
         };
@@ -104,7 +100,7 @@ export function createMcpServer(): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Profile: ${profileName}\nStatus: expired\nExpired: ${expiry.expiresAt.toISOString()}\nRun "linkedctl profile create" with a new --access-token to re-authenticate.`,
+              text: `Profile: ${label}\nStatus: expired\nExpired: ${expiry.expiresAt.toISOString()}\nRun "linkedctl auth login" to re-authenticate.`,
             },
           ],
         };
@@ -114,7 +110,7 @@ export function createMcpServer(): McpServer {
         content: [
           {
             type: "text" as const,
-            text: `Profile: ${profileName}\nStatus: authenticated\nExpires: ${expiry.expiresAt.toISOString()}`,
+            text: `Profile: ${label}\nStatus: authenticated\nExpires: ${expiry.expiresAt.toISOString()}`,
           },
         ],
       };
@@ -131,31 +127,28 @@ export function createMcpServer(): McpServer {
       },
     },
     async (args) => {
-      const configPath = getDefaultConfigPath();
-      const config = await readConfigFile(configPath);
+      const { raw } = await loadConfigFile({ profile: args.profile });
+      const { config } = validateConfig(raw);
+      const label = args.profile ?? "default";
 
-      const profileName = args.profile ?? config["default-profile"] ?? "default";
-      const profile = getProfile(config, profileName);
-
-      if (profile === undefined) {
+      if (config.oauth === undefined) {
         return {
-          content: [{ type: "text" as const, text: `Profile "${profileName}" not found.` }],
+          content: [{ type: "text" as const, text: `Profile "${label}" not found or has no OAuth config.` }],
           isError: true,
         };
       }
 
-      const accessToken = profile["access-token"];
-      const clientId = profile["client-id"];
-      const clientSecret = profile["client-secret"];
+      const accessToken = config.oauth.accessToken;
+      const clientId = config.oauth.clientId;
+      const clientSecret = config.oauth.clientSecret;
 
-      if (accessToken === "" || clientId === undefined || clientSecret === undefined) {
-        const updated = clearProfileCredentials(config, profileName);
-        await writeConfigFile(configPath, updated);
+      if (accessToken === undefined || accessToken === "" || clientId === undefined || clientSecret === undefined) {
+        await clearOAuthTokens({ profile: args.profile });
         return {
           content: [
             {
               type: "text" as const,
-              text: `No complete credentials for server-side revocation. Local credentials cleared for profile "${profileName}".`,
+              text: `No complete credentials for server-side revocation. Local credentials cleared for profile "${label}".`,
             },
           ],
         };
@@ -170,16 +163,15 @@ export function createMcpServer(): McpServer {
         warning = error instanceof Error ? error.message : String(error);
       }
 
-      const updated = clearProfileCredentials(config, profileName);
-      await writeConfigFile(configPath, updated);
+      await clearOAuthTokens({ profile: args.profile });
 
       const lines: string[] = [];
       if (serverRevoked) {
-        lines.push(`Access token revoked server-side for profile "${profileName}".`);
+        lines.push(`Access token revoked server-side for profile "${label}".`);
       } else {
         lines.push(`Warning: Server-side revocation failed: ${warning}`);
       }
-      lines.push(`Local credentials cleared for profile "${profileName}".`);
+      lines.push(`Local credentials cleared for profile "${label}".`);
 
       return {
         content: [{ type: "text" as const, text: lines.join("\n") }],

@@ -1,162 +1,131 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
-import { rm } from "node:fs/promises";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { readConfigFile, writeConfigFile } from "@linkedctl/core";
-import * as configFile from "@linkedctl/core";
+import * as core from "@linkedctl/core";
 import { revokeCommand } from "./revoke.js";
 
 vi.mock("@linkedctl/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof configFile>();
+  const actual = await importOriginal<typeof core>();
   return { ...actual };
 });
 
-function tempConfigPath(): string {
-  return join(tmpdir(), `linkedctl-test-${randomUUID()}`, "config.yaml");
-}
-
 describe("auth revoke", () => {
-  let configPath: string;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let warnSpy: ReturnType<typeof vi.spyOn>;
+  let clearOAuthTokensSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    configPath = tempConfigPath();
-    vi.spyOn(configFile, "getDefaultConfigPath").mockReturnValue(configPath);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    clearOAuthTokensSpy = vi.spyOn(core, "clearOAuthTokens").mockResolvedValue(undefined);
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.restoreAllMocks();
-    await rm(join(configPath, ".."), { recursive: true, force: true });
   });
 
   it("revokes token server-side and clears local credentials", async () => {
-    const revokeSpy = vi.spyOn(configFile, "revokeAccessToken").mockResolvedValueOnce(undefined);
+    const revokeSpy = vi.spyOn(core, "revokeAccessToken").mockResolvedValueOnce(undefined);
 
-    await writeConfigFile(configPath, {
-      "default-profile": "personal",
-      profiles: {
-        personal: {
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: {
           "access-token": "secret-token",
-          "api-version": "202501",
           "client-id": "my-client-id",
           "client-secret": "my-client-secret",
         },
+        "api-version": "202501",
       },
+      path: "/some/path.yaml",
     });
 
     const cmd = revokeCommand();
     await cmd.parseAsync([], { from: "user" });
 
     expect(revokeSpy).toHaveBeenCalledWith("my-client-id", "my-client-secret", "secret-token");
-
-    const config = await readConfigFile(configPath);
-    expect(config.profiles?.["personal"]?.["access-token"]).toBe("");
-    expect(config.profiles?.["personal"]?.["api-version"]).toBe("202501");
-    expect(consoleSpy).toHaveBeenCalledWith('Access token revoked server-side for profile "personal".');
-    expect(consoleSpy).toHaveBeenCalledWith('Local credentials cleared for profile "personal".');
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
+    expect(consoleSpy).toHaveBeenCalledWith('Access token revoked server-side for profile "default".');
+    expect(consoleSpy).toHaveBeenCalledWith('Local credentials cleared for profile "default".');
   });
 
   it("clears local credentials with warning when server-side revocation fails", async () => {
-    vi.spyOn(configFile, "revokeAccessToken").mockRejectedValueOnce(new Error("network error"));
+    vi.spyOn(core, "revokeAccessToken").mockRejectedValueOnce(new Error("network error"));
 
-    await writeConfigFile(configPath, {
-      "default-profile": "personal",
-      profiles: {
-        personal: {
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: {
           "access-token": "secret-token",
-          "api-version": "202501",
           "client-id": "my-client-id",
           "client-secret": "my-client-secret",
         },
+        "api-version": "202501",
       },
+      path: "/some/path.yaml",
     });
 
     const cmd = revokeCommand();
     await cmd.parseAsync([], { from: "user" });
 
-    const config = await readConfigFile(configPath);
-    expect(config.profiles?.["personal"]?.["access-token"]).toBe("");
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
     expect(warnSpy).toHaveBeenCalledWith("Warning: Server-side revocation failed: network error");
-    expect(consoleSpy).toHaveBeenCalledWith('Local credentials cleared for profile "personal".');
+    expect(consoleSpy).toHaveBeenCalledWith('Local credentials cleared for profile "default".');
   });
 
   it("clears local credentials when client credentials are missing", async () => {
-    await writeConfigFile(configPath, {
-      "default-profile": "personal",
-      profiles: {
-        personal: {
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: {
           "access-token": "secret-token",
-          "api-version": "202501",
         },
+        "api-version": "202501",
       },
+      path: "/some/path.yaml",
     });
 
     const cmd = revokeCommand();
     await cmd.parseAsync([], { from: "user" });
 
-    const config = await readConfigFile(configPath);
-    expect(config.profiles?.["personal"]?.["access-token"]).toBe("");
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining("No complete credentials for server-side revocation"),
     );
   });
 
   it("clears local credentials when access token is empty", async () => {
-    await writeConfigFile(configPath, {
-      "default-profile": "personal",
-      profiles: {
-        personal: {
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: {
           "access-token": "",
-          "api-version": "202501",
           "client-id": "cid",
           "client-secret": "csecret",
         },
+        "api-version": "202501",
       },
+      path: "/some/path.yaml",
     });
 
     const cmd = revokeCommand();
     await cmd.parseAsync([], { from: "user" });
 
-    const config = await readConfigFile(configPath);
-    expect(config.profiles?.["personal"]?.["access-token"]).toBe("");
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining("No complete credentials for server-side revocation"),
     );
   });
 
-  it("throws when profile does not exist", async () => {
-    const cmd = revokeCommand();
-    await expect(cmd.parseAsync([], { from: "user" })).rejects.toThrow(/not found/);
-  });
-
-  it("preserves other profiles", async () => {
-    vi.spyOn(configFile, "revokeAccessToken").mockResolvedValueOnce(undefined);
-
-    await writeConfigFile(configPath, {
-      "default-profile": "a",
-      profiles: {
-        a: {
-          "access-token": "tok-a",
-          "api-version": "202501",
-          "client-id": "cid",
-          "client-secret": "csecret",
-        },
-        b: { "access-token": "tok-b", "api-version": "202501" },
-      },
+  it("clears credentials when no OAuth section exists", async () => {
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: { "api-version": "202501" },
+      path: "/some/path.yaml",
     });
 
     const cmd = revokeCommand();
     await cmd.parseAsync([], { from: "user" });
 
-    const config = await readConfigFile(configPath);
-    expect(config.profiles?.["a"]?.["access-token"]).toBe("");
-    expect(config.profiles?.["b"]?.["access-token"]).toBe("tok-b");
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("No complete credentials for server-side revocation"),
+    );
   });
 });

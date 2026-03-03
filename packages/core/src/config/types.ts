@@ -2,31 +2,39 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 /**
- * A single profile entry in the configuration file.
+ * OAuth2 credentials stored in a config file.
  */
-export interface Profile {
-  "access-token": string;
-  "api-version": string;
-  "client-id"?: string | undefined;
-  "client-secret"?: string | undefined;
-  "refresh-token"?: string | undefined;
-  "token-expiry"?: string | undefined;
+export interface OAuthCredentials {
+  clientId?: string | undefined;
+  clientSecret?: string | undefined;
+  accessToken?: string | undefined;
+  refreshToken?: string | undefined;
+  tokenExpiresAt?: string | undefined;
 }
 
 /**
- * Root structure of the `~/.linkedctl.yaml` configuration file.
+ * Configuration for a single linkedctl profile.
+ * Each YAML file represents one profile (no profiles map wrapper).
  */
-export interface ConfigFile {
-  "default-profile"?: string | undefined;
-  profiles?: Record<string, Profile> | undefined;
+export interface LinkedctlConfig {
+  oauth?: OAuthCredentials | undefined;
+  apiVersion?: string | undefined;
 }
 
 /**
- * Resolved configuration produced by merging CLI flags, environment
- * variables, and the on-disk config file.
+ * Result of resolving configuration: validated config plus any warnings.
  */
-export interface ResolvedConfig {
-  accessToken: string;
-  apiVersion: string;
-  profile: string;
+export interface ConfigResult {
+  config: LinkedctlConfig;
+  warnings: string[];
+}
+
+/**
+ * Options for resolving configuration.
+ */
+export interface ResolveOptions {
+  profile?: string | undefined;
+  cwd?: string | undefined;
+  home?: string | undefined;
+  env?: Record<string, string | undefined> | undefined;
 }

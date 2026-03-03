@@ -1,85 +1,98 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
-import { rm, stat } from "node:fs/promises";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { readConfigFile } from "@linkedctl/core";
-import * as configFile from "@linkedctl/core";
+import * as core from "@linkedctl/core";
 import { createCommand } from "./create.js";
 
 vi.mock("@linkedctl/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof configFile>();
+  const actual = await importOriginal<typeof core>();
   return { ...actual };
 });
 
-function tempConfigPath(): string {
-  return join(tmpdir(), `linkedctl-test-${randomUUID()}`, "config.yaml");
-}
+vi.mock("node:os", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:os")>();
+  return {
+    ...actual,
+    homedir: vi.fn().mockReturnValue("/mock/home"),
+  };
+});
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    writeFile: vi.fn().mockResolvedValue(undefined),
+    mkdir: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
+const { homedir } = await import("node:os");
+const { writeFile, mkdir } = await import("node:fs/promises");
 
 describe("profile create", () => {
-  let configPath: string;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+  let loadConfigFileSpy: ReturnType<typeof vi.spyOn>;
+  let saveOAuthTokensSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    configPath = tempConfigPath();
-    vi.spyOn(configFile, "getDefaultConfigPath").mockReturnValue(configPath);
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.clearAllMocks();
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    loadConfigFileSpy = vi.spyOn(core, "loadConfigFile").mockResolvedValue({ raw: undefined, path: undefined });
+    saveOAuthTokensSpy = vi.spyOn(core, "saveOAuthTokens").mockResolvedValue(undefined);
+    vi.mocked(homedir).mockReturnValue("/mock/home");
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.restoreAllMocks();
-    await rm(join(configPath, ".."), { recursive: true, force: true });
   });
 
   it("creates a profile with access token and api version", async () => {
     const cmd = createCommand();
     await cmd.parseAsync(["personal", "--access-token", "tok123", "--api-version", "202501"], { from: "user" });
 
-    const config = await readConfigFile(configPath);
-    expect(config.profiles?.["personal"]?.["access-token"]).toBe("tok123");
-    expect(config.profiles?.["personal"]?.["api-version"]).toBe("202501");
-  });
-
-  it("sets first profile as default automatically", async () => {
-    const cmd = createCommand();
-    await cmd.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" });
-
-    const config = await readConfigFile(configPath);
-    expect(config["default-profile"]).toBe("personal");
-  });
-
-  it.skipIf(process.platform === "win32")("sets file permissions to 0600", async () => {
-    const cmd = createCommand();
-    await cmd.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" });
-
-    const info = await stat(configPath);
-    expect(info.mode & 0o777).toBe(0o600);
+    expect(loadConfigFileSpy).toHaveBeenCalledWith({ profile: "personal" });
+    expect(vi.mocked(mkdir)).toHaveBeenCalledWith("/mock/home/.linkedctl", { recursive: true });
+    expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
+      "/mock/home/.linkedctl/personal.yaml",
+      'api-version: "202501"\n',
+      { mode: 0o600 },
+    );
+    expect(saveOAuthTokensSpy).toHaveBeenCalledWith({ accessToken: "tok123" }, { profile: "personal" });
+    expect(consoleSpy).toHaveBeenCalledWith('Profile "personal" created.');
   });
 
   it("throws when profile already exists", async () => {
-    const cmd1 = createCommand();
-    await cmd1.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" });
+    loadConfigFileSpy.mockResolvedValue({
+      raw: { "api-version": "202501" },
+      path: "/mock/home/.linkedctl/personal.yaml",
+    });
 
-    const cmd2 = createCommand();
+    const cmd = createCommand();
     await expect(
-      cmd2.parseAsync(["personal", "--access-token", "tok2", "--api-version", "v2"], { from: "user" }),
+      cmd.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" }),
     ).rejects.toThrow(/already exists/);
   });
 
-  it("sets as default when --set-default is used", async () => {
-    // Create first profile (auto-default)
-    const cmd1 = createCommand();
-    await cmd1.parseAsync(["first", "--access-token", "t1", "--api-version", "v"], { from: "user" });
+  it("throws for invalid profile name", async () => {
+    const cmd = createCommand();
+    await expect(
+      cmd.parseAsync(["../evil", "--access-token", "tok", "--api-version", "v"], { from: "user" }),
+    ).rejects.toThrow(/Invalid profile name/);
+  });
 
-    // Create second profile with --set-default
-    const cmd2 = createCommand();
-    await cmd2.parseAsync(["second", "--access-token", "t2", "--api-version", "v", "--set-default"], {
-      from: "user",
+  it("does not write files when profile already exists", async () => {
+    loadConfigFileSpy.mockResolvedValue({
+      raw: { "api-version": "202501" },
+      path: "/mock/home/.linkedctl/personal.yaml",
     });
 
-    const config = await readConfigFile(configPath);
-    expect(config["default-profile"]).toBe("second");
+    const cmd = createCommand();
+    await expect(
+      cmd.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" }),
+    ).rejects.toThrow();
+
+    expect(vi.mocked(writeFile)).not.toHaveBeenCalled();
+    expect(saveOAuthTokensSpy).not.toHaveBeenCalled();
   });
 });

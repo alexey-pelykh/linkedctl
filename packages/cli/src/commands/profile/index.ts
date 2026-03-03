@@ -6,7 +6,6 @@ import { createCommand } from "./create.js";
 import { listCommand } from "./list.js";
 import { showCommand } from "./show.js";
 import { deleteCommand } from "./delete.js";
-import { setDefaultCommand } from "./set-default.js";
 
 export function profileCommand(): Command {
   const cmd = new Command("profile");
@@ -16,7 +15,6 @@ export function profileCommand(): Command {
   cmd.addCommand(listCommand());
   cmd.addCommand(showCommand());
   cmd.addCommand(deleteCommand());
-  cmd.addCommand(setDefaultCommand());
 
   return cmd;
 }

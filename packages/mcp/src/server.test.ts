@@ -11,12 +11,10 @@ vi.mock("@linkedctl/core", () => ({
   LinkedInClient: vi.fn(),
   getCurrentPersonUrn: vi.fn(),
   createTextPost: vi.fn(),
-  getDefaultConfigPath: vi.fn(),
-  readConfigFile: vi.fn(),
-  writeConfigFile: vi.fn(),
-  getProfile: vi.fn(),
+  loadConfigFile: vi.fn(),
+  validateConfig: vi.fn(),
   getTokenExpiry: vi.fn(),
-  clearProfileCredentials: vi.fn(),
+  clearOAuthTokens: vi.fn(),
   revokeAccessToken: vi.fn(),
 }));
 
@@ -25,12 +23,10 @@ import {
   LinkedInClient,
   getCurrentPersonUrn,
   createTextPost,
-  getDefaultConfigPath,
-  readConfigFile,
-  writeConfigFile,
-  getProfile,
+  loadConfigFile,
+  validateConfig,
   getTokenExpiry,
-  clearProfileCredentials,
+  clearOAuthTokens,
   revokeAccessToken,
 } from "@linkedctl/core";
 
@@ -71,9 +67,11 @@ describe("createMcpServer", () => {
   describe("post_create", () => {
     it("creates a post and returns the URN", async () => {
       vi.mocked(resolveConfig).mockResolvedValue({
-        accessToken: "test-token",
-        apiVersion: "202401",
-        profile: "default",
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
       });
       vi.mocked(LinkedInClient).mockImplementation(function () {
         return Object.create(null);
@@ -100,9 +98,11 @@ describe("createMcpServer", () => {
 
     it("passes profile and visibility options", async () => {
       vi.mocked(resolveConfig).mockResolvedValue({
-        accessToken: "test-token",
-        apiVersion: "202401",
-        profile: "work",
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
       });
       vi.mocked(LinkedInClient).mockImplementation(function () {
         return Object.create(null);
@@ -132,15 +132,19 @@ describe("createMcpServer", () => {
 
   describe("auth_status", () => {
     it("reports not configured when profile has no token", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue(undefined);
+      vi.mocked(loadConfigFile).mockResolvedValue({ raw: undefined, path: undefined });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {},
+        warnings: [],
+        errors: [],
+      });
 
       const result = await client.callTool({
         name: "auth_status",
         arguments: {},
       });
 
+      expect(loadConfigFile).toHaveBeenCalledWith({ profile: undefined });
       expect(result.content).toEqual([
         {
           type: "text",
@@ -150,11 +154,17 @@ describe("createMcpServer", () => {
     });
 
     it("reports authenticated with expiry for valid JWT", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue({
-        "access-token": "valid-jwt-token",
-        "api-version": "202401",
+      vi.mocked(loadConfigFile).mockResolvedValue({
+        raw: { oauth: { "access-token": "valid-jwt-token" }, "api-version": "202401" },
+        path: "/some/path.yaml",
+      });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {
+          oauth: { accessToken: "valid-jwt-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+        errors: [],
       });
       vi.mocked(getTokenExpiry).mockReturnValue({
         expiresAt: new Date("2099-12-31T23:59:59Z"),
@@ -175,11 +185,17 @@ describe("createMcpServer", () => {
     });
 
     it("reports expired for expired token", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue({
-        "access-token": "expired-jwt-token",
-        "api-version": "202401",
+      vi.mocked(loadConfigFile).mockResolvedValue({
+        raw: { oauth: { "access-token": "expired-jwt-token" }, "api-version": "202401" },
+        path: "/some/path.yaml",
+      });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {
+          oauth: { accessToken: "expired-jwt-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+        errors: [],
       });
       vi.mocked(getTokenExpiry).mockReturnValue({
         expiresAt: new Date("2020-01-01T00:00:00Z"),
@@ -200,11 +216,17 @@ describe("createMcpServer", () => {
     });
 
     it("reports unknown expiry for non-JWT token", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue({
-        "access-token": "opaque-token",
-        "api-version": "202401",
+      vi.mocked(loadConfigFile).mockResolvedValue({
+        raw: { oauth: { "access-token": "opaque-token" }, "api-version": "202401" },
+        path: "/some/path.yaml",
+      });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {
+          oauth: { accessToken: "opaque-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+        errors: [],
       });
       vi.mocked(getTokenExpiry).mockReturnValue(undefined);
 
@@ -222,16 +244,19 @@ describe("createMcpServer", () => {
     });
 
     it("uses specified profile name", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue(undefined);
+      vi.mocked(loadConfigFile).mockResolvedValue({ raw: undefined, path: undefined });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {},
+        warnings: [],
+        errors: [],
+      });
 
       const result = await client.callTool({
         name: "auth_status",
         arguments: { profile: "work" },
       });
 
-      expect(getProfile).toHaveBeenCalledWith(expect.anything(), "work");
+      expect(loadConfigFile).toHaveBeenCalledWith({ profile: "work" });
       expect(result.content).toEqual([
         {
           type: "text",
@@ -243,17 +268,31 @@ describe("createMcpServer", () => {
 
   describe("auth_revoke", () => {
     it("revokes token server-side and clears local credentials", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue({
-        "access-token": "my-token",
-        "api-version": "202401",
-        "client-id": "cid",
-        "client-secret": "csecret",
+      vi.mocked(loadConfigFile).mockResolvedValue({
+        raw: {
+          oauth: {
+            "access-token": "my-token",
+            "client-id": "cid",
+            "client-secret": "csecret",
+          },
+          "api-version": "202401",
+        },
+        path: "/some/path.yaml",
+      });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {
+          oauth: {
+            accessToken: "my-token",
+            clientId: "cid",
+            clientSecret: "csecret",
+          },
+          apiVersion: "202401",
+        },
+        warnings: [],
+        errors: [],
       });
       vi.mocked(revokeAccessToken).mockResolvedValue(undefined);
-      vi.mocked(clearProfileCredentials).mockReturnValue({ "default-profile": "default", profiles: {} });
-      vi.mocked(writeConfigFile).mockResolvedValue(undefined);
+      vi.mocked(clearOAuthTokens).mockResolvedValue(undefined);
 
       const result = await client.callTool({
         name: "auth_revoke",
@@ -261,8 +300,7 @@ describe("createMcpServer", () => {
       });
 
       expect(revokeAccessToken).toHaveBeenCalledWith("cid", "csecret", "my-token");
-      expect(clearProfileCredentials).toHaveBeenCalled();
-      expect(writeConfigFile).toHaveBeenCalled();
+      expect(clearOAuthTokens).toHaveBeenCalledWith({ profile: undefined });
       expect(result.content).toEqual([
         {
           type: "text",
@@ -272,23 +310,38 @@ describe("createMcpServer", () => {
     });
 
     it("clears local credentials with warning when server-side revocation fails", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue({
-        "access-token": "my-token",
-        "api-version": "202401",
-        "client-id": "cid",
-        "client-secret": "csecret",
+      vi.mocked(loadConfigFile).mockResolvedValue({
+        raw: {
+          oauth: {
+            "access-token": "my-token",
+            "client-id": "cid",
+            "client-secret": "csecret",
+          },
+          "api-version": "202401",
+        },
+        path: "/some/path.yaml",
+      });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {
+          oauth: {
+            accessToken: "my-token",
+            clientId: "cid",
+            clientSecret: "csecret",
+          },
+          apiVersion: "202401",
+        },
+        warnings: [],
+        errors: [],
       });
       vi.mocked(revokeAccessToken).mockRejectedValue(new Error("network error"));
-      vi.mocked(clearProfileCredentials).mockReturnValue({ "default-profile": "default", profiles: {} });
-      vi.mocked(writeConfigFile).mockResolvedValue(undefined);
+      vi.mocked(clearOAuthTokens).mockResolvedValue(undefined);
 
       const result = await client.callTool({
         name: "auth_revoke",
         arguments: {},
       });
 
+      expect(clearOAuthTokens).toHaveBeenCalledWith({ profile: undefined });
       expect(result.content).toEqual([
         {
           type: "text",
@@ -297,10 +350,16 @@ describe("createMcpServer", () => {
       ]);
     });
 
-    it("returns error when profile not found", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue(undefined);
+    it("returns error when profile has no OAuth config", async () => {
+      vi.mocked(loadConfigFile).mockResolvedValue({
+        raw: { "api-version": "202401" },
+        path: "/some/path.yaml",
+      });
+      vi.mocked(validateConfig).mockReturnValue({
+        config: { apiVersion: "202401" },
+        warnings: [],
+        errors: [],
+      });
 
       const result = await client.callTool({
         name: "auth_revoke",
@@ -310,20 +369,28 @@ describe("createMcpServer", () => {
       expect(result.content).toEqual([
         {
           type: "text",
-          text: expect.stringContaining("not found"),
+          text: expect.stringContaining("not found or has no OAuth config"),
         },
       ]);
     });
 
     it("clears local credentials when client credentials are missing", async () => {
-      vi.mocked(getDefaultConfigPath).mockReturnValue("/home/user/.linkedctl.yaml");
-      vi.mocked(readConfigFile).mockResolvedValue({ "default-profile": "default" });
-      vi.mocked(getProfile).mockReturnValue({
-        "access-token": "my-token",
-        "api-version": "202401",
+      vi.mocked(loadConfigFile).mockResolvedValue({
+        raw: {
+          oauth: { "access-token": "my-token" },
+          "api-version": "202401",
+        },
+        path: "/some/path.yaml",
       });
-      vi.mocked(clearProfileCredentials).mockReturnValue({ "default-profile": "default", profiles: {} });
-      vi.mocked(writeConfigFile).mockResolvedValue(undefined);
+      vi.mocked(validateConfig).mockReturnValue({
+        config: {
+          oauth: { accessToken: "my-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+        errors: [],
+      });
+      vi.mocked(clearOAuthTokens).mockResolvedValue(undefined);
 
       const result = await client.callTool({
         name: "auth_revoke",
@@ -331,7 +398,7 @@ describe("createMcpServer", () => {
       });
 
       expect(revokeAccessToken).not.toHaveBeenCalled();
-      expect(clearProfileCredentials).toHaveBeenCalled();
+      expect(clearOAuthTokens).toHaveBeenCalledWith({ profile: undefined });
       expect(result.content).toEqual([
         {
           type: "text",
