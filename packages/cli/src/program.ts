@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command } from "commander";
+import { authCommand } from "./commands/auth/index.js";
 import { profileCommand } from "./commands/profile/index.js";
 
 /**
@@ -12,6 +13,7 @@ export function createProgram(): Command {
   program.description("CLI for the LinkedIn API");
   program.option("--profile <name>", "profile to use from config file");
 
+  program.addCommand(authCommand());
   program.addCommand(profileCommand());
 
   return program;
