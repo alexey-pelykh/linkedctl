@@ -35,13 +35,13 @@ npx linkedctl --help
 1. Create a LinkedIn app at [linkedin.com/developers](https://www.linkedin.com/developers/apps)
 2. Configure OAuth 2.0 credentials
 3. Authenticate:
-   ```sh
-   linkedctl auth login
-   ```
+    ```sh
+    linkedctl auth login
+    ```
 4. Start using:
-   ```sh
-   linkedctl post "Hello from LinkedCtl!"
-   ```
+    ```sh
+    linkedctl post "Hello from LinkedCtl!"
+    ```
 
 ## MCP Integration
 
@@ -57,12 +57,12 @@ Add to `claude_desktop_config.json`:
 
 ```json
 {
-  "mcpServers": {
-    "linkedctl": {
-      "command": "npx",
-      "args": ["linkedctl", "mcp"]
+    "mcpServers": {
+        "linkedctl": {
+            "command": "npx",
+            "args": ["linkedctl", "mcp"]
+        }
     }
-  }
 }
 ```
 
@@ -86,11 +86,11 @@ linkedctl auth token --access-token YOUR_TOKEN
 
 ### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `LINKEDCTL_CLIENT_ID` | LinkedIn OAuth 2.0 client ID |
-| `LINKEDCTL_CLIENT_SECRET` | LinkedIn OAuth 2.0 client secret |
-| `LINKEDCTL_ACCESS_TOKEN` | Direct access token (bypasses OAuth flow) |
+| Variable                  | Description                               |
+| ------------------------- | ----------------------------------------- |
+| `LINKEDCTL_CLIENT_ID`     | LinkedIn OAuth 2.0 client ID              |
+| `LINKEDCTL_CLIENT_SECRET` | LinkedIn OAuth 2.0 client secret          |
+| `LINKEDCTL_ACCESS_TOKEN`  | Direct access token (bypasses OAuth flow) |
 
 ## Disclaimer
 
