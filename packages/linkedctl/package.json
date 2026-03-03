@@ -47,7 +47,8 @@
   },
   "dependencies": {
     "@linkedctl/cli": "workspace:^",
-    "@linkedctl/mcp": "workspace:^"
+    "@linkedctl/mcp": "workspace:^",
+    "commander": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
