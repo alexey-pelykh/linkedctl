@@ -65,12 +65,18 @@ export function setupCommand(): Command {
     try {
       const clientId = await rl.question("Client ID: ");
       if (clientId.trim() === "") {
-        throw new Error("Client ID cannot be empty.");
+        throw new Error(
+          "Client ID cannot be empty. " +
+            'Find your Client ID in the "Auth" tab of your app at https://www.linkedin.com/developers/apps',
+        );
       }
 
       const clientSecret = await rl.question("Client Secret: ");
       if (clientSecret.trim() === "") {
-        throw new Error("Client Secret cannot be empty.");
+        throw new Error(
+          "Client Secret cannot be empty. " +
+            'Find your Client Secret in the "Auth" tab of your app at https://www.linkedin.com/developers/apps',
+        );
       }
 
       const writeOpts = profileFlag !== undefined ? { profile: profileFlag } : undefined;
@@ -103,7 +109,11 @@ export function setupCommand(): Command {
       }
 
       if (scopes.length === 0) {
-        throw new Error("At least one LinkedIn product must be enabled for OAuth to work.");
+        throw new Error(
+          "At least one LinkedIn product must be enabled for OAuth to work. " +
+            'Enable products under the "Products" tab of your app at https://www.linkedin.com/developers/apps ' +
+            "and then re-run this setup.",
+        );
       }
 
       const scope = [...new Set(scopes)].join(" ");

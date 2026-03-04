@@ -16,7 +16,10 @@ export function logoutCommand(): Command {
     const { config } = validateConfig(raw);
 
     if (config.oauth === undefined) {
-      throw new Error("No OAuth credentials configured.");
+      throw new Error(
+        'No OAuth credentials configured. Run "linkedctl auth setup" to configure credentials, ' +
+          'or "linkedctl auth login" to authenticate.',
+      );
     }
 
     await clearOAuthTokens({ profile: profileFlag });
