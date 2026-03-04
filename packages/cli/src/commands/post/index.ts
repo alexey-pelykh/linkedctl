@@ -8,7 +8,7 @@ export function postCommand(): Command {
   const cmd = new Command("post");
   cmd.description("Manage LinkedIn posts");
 
-  cmd.argument("[text]", "shorthand: create a post with the given text");
+  cmd.argument("[text]", "shorthand: create a post with the given text (text > stdin)");
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.action(async (text: string | undefined, opts: Record<string, unknown>, actionCmd: Command) => {
