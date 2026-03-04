@@ -10,9 +10,12 @@ import { whoamiCommand } from "./commands/whoami.js";
 /**
  * Build and return the top-level Commander program.
  */
-export function createProgram(): Command {
+export function createProgram(version?: string): Command {
   const program = new Command("linkedctl");
   program.description("CLI for the LinkedIn API");
+  if (version !== undefined) {
+    program.version(version);
+  }
   program.option("--profile <name>", "profile to use from config file");
 
   program.addCommand(authCommand());
