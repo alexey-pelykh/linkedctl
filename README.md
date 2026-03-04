@@ -43,7 +43,7 @@ npx linkedctl --help
     linkedctl post "Hello from LinkedCtl!"
     ```
 
-See the [OAuth Setup Guide](docs/oauth-setup.md) for detailed step-by-step instructions.
+See the [OAuth Setup Guide](https://github.com/alexey-pelykh/linkedctl/blob/main/docs/oauth-setup.md) for detailed step-by-step instructions.
 
 ## MCP Integration
 
