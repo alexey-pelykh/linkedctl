@@ -75,7 +75,7 @@ describe("auth setup", () => {
   });
 
   it("saves credentials and scope with both products enabled", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "y", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "y", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -88,7 +88,7 @@ describe("auth setup", () => {
   });
 
   it("trims whitespace from input", () => {
-    mockReadline(["  my-client-id  ", "  my-client-secret  ", "y", "n", "n"]);
+    mockReadline(["n", "  my-client-id  ", "  my-client-secret  ", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -100,14 +100,14 @@ describe("auth setup", () => {
   });
 
   it("throws when client ID is empty", async () => {
-    mockReadline(["", "my-client-secret", "y", "n"]);
+    mockReadline(["n", "", "my-client-secret", "y", "n"]);
 
     const program = wrapInProgram(setupCommand());
     await expect(program.parseAsync(["auth", "setup"], { from: "user" })).rejects.toThrow("Client ID cannot be empty.");
   });
 
   it("throws when client secret is empty", async () => {
-    mockReadline(["my-client-id", "", "y", "n"]);
+    mockReadline(["n", "my-client-id", "", "y", "n"]);
 
     const program = wrapInProgram(setupCommand());
     await expect(program.parseAsync(["auth", "setup"], { from: "user" })).rejects.toThrow(
@@ -116,7 +116,7 @@ describe("auth setup", () => {
   });
 
   it("throws when no products are selected", async () => {
-    mockReadline(["my-client-id", "my-client-secret", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     await expect(program.parseAsync(["auth", "setup"], { from: "user" })).rejects.toThrow(
@@ -125,7 +125,7 @@ describe("auth setup", () => {
   });
 
   it("saves scope for Sign In only", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -134,7 +134,7 @@ describe("auth setup", () => {
   });
 
   it("saves scope for Share only (auto-includes openid scopes)", () => {
-    mockReadline(["my-client-id", "my-client-secret", "n", "y", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "n", "y", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -143,7 +143,7 @@ describe("auth setup", () => {
   });
 
   it("respects --profile flag", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["--profile", "work", "auth", "setup"], { from: "user" }).then(() => {
@@ -156,7 +156,7 @@ describe("auth setup", () => {
   });
 
   it("prints setup instructions to stderr", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -169,7 +169,7 @@ describe("auth setup", () => {
   });
 
   it("prints profile label in success message", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["--profile", "personal", "auth", "setup"], { from: "user" }).then(() => {
@@ -178,8 +178,8 @@ describe("auth setup", () => {
     });
   });
 
-  it("copies logo to ~/Downloads and mentions it in instructions", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+  it("copies logo to ~/Downloads when user accepts", () => {
+    mockReadline(["y", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -192,8 +192,21 @@ describe("auth setup", () => {
     });
   });
 
+  it("does not copy logo when user declines", () => {
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+
+    const program = wrapInProgram(setupCommand());
+    return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
+      expect(copyFileSpy).not.toHaveBeenCalled();
+
+      const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+      expect(output).not.toContain("linkedctl-logo.png");
+      expect(output).toContain("App logo");
+    });
+  });
+
   it("saves pkce setting when enabled", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "y"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "y"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -204,7 +217,7 @@ describe("auth setup", () => {
   });
 
   it("saves pkce setting when disabled", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -213,7 +226,7 @@ describe("auth setup", () => {
   });
 
   it("saves default api-version", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -222,7 +235,7 @@ describe("auth setup", () => {
   });
 
   it("saves api-version with profile flag", () => {
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["--profile", "work", "auth", "setup"], { from: "user" }).then(() => {
@@ -230,13 +243,14 @@ describe("auth setup", () => {
     });
   });
 
-  it("skips logo mention when copy fails", () => {
+  it("shows error when logo copy fails after user accepts", () => {
     copyFileSpy.mockRejectedValue(new Error("ENOENT"));
-    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+    mockReadline(["y", "my-client-id", "my-client-secret", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
       const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+      expect(output).toContain("Could not save logo");
       expect(output).not.toContain("linkedctl-logo.png");
       expect(output).toContain("App logo");
     });

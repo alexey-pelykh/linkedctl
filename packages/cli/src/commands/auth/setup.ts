@@ -21,15 +21,20 @@ export function setupCommand(): Command {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const profileFlag: string | undefined = program?.opts()["profile"];
 
-    // Copy logo to ~/Downloads for easy upload during app registration
+    const rl = createInterface({ input: process.stdin, output: process.stderr });
+
+    // Offer to save logo to ~/Downloads for easy upload during app registration
     const logoSource = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "assets", "logo.png");
     const logoDestination = join(homedir(), "Downloads", "linkedctl-logo.png");
     let logoSaved = false;
-    try {
-      await copyFile(logoSource, logoDestination);
-      logoSaved = true;
-    } catch {
-      // Logo not available (e.g. bundled differently), skip silently
+    const saveLogo = await rl.question("Save LinkedCtl logo to ~/Downloads for app registration? [y/N] ");
+    if (saveLogo.trim().toLowerCase() === "y" || saveLogo.trim().toLowerCase() === "yes") {
+      try {
+        await copyFile(logoSource, logoDestination);
+        logoSaved = true;
+      } catch {
+        process.stderr.write("  Could not save logo (file not available).\n");
+      }
     }
 
     process.stderr.write("\n");
@@ -50,8 +55,6 @@ export function setupCommand(): Command {
     process.stderr.write("   (e.g. Share on LinkedIn, Sign In with LinkedIn using OpenID Connect)\n");
     process.stderr.write("6. Copy the Client ID and Client Secret below\n");
     process.stderr.write("\n");
-
-    const rl = createInterface({ input: process.stdin, output: process.stderr });
 
     try {
       const clientId = await rl.question("Client ID: ");
