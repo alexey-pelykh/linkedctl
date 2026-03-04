@@ -179,3 +179,10 @@ Access tokens are valid for approximately 60 days. Run `linkedctl auth login` ag
 ### Scope errors when posting
 
 If you get permission errors when creating posts, verify that your LinkedIn app has the **Share on LinkedIn** product enabled and that the `w_member_social` scope is listed under your app's OAuth 2.0 scopes.
+
+## Next Steps
+
+Now that authentication is configured, explore what LinkedCtl can do:
+
+- [CLI Reference](../README.md#cli-reference) — all available commands and options
+- [MCP Integration](../README.md#mcp-integration) — connect LinkedCtl to AI assistants like Claude
