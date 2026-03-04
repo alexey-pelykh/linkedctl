@@ -17,6 +17,7 @@ export function createProgram(version?: string): Command {
     program.version(version);
   }
   program.option("--profile <name>", "profile to use from config file");
+  program.option("--no-color", "disable color output");
 
   program.addCommand(authCommand());
   program.addCommand(postCommand());

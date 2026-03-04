@@ -6,3 +6,4 @@ export { detectFormat, resolveFormat } from "./format.js";
 export { formatJson } from "./json-formatter.js";
 export { formatTable } from "./table-formatter.js";
 export { formatOutput } from "./formatter.js";
+export { isColorEnabled } from "./color.js";
