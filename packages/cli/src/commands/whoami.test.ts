@@ -49,7 +49,10 @@ describe("whoami", () => {
       const cmd = whoamiCommand();
       await cmd.parseAsync([], { from: "user" });
 
-      expect(resolveConfigSpy).toHaveBeenCalledWith({ profile: undefined });
+      expect(resolveConfigSpy).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email"],
+      });
       expect(getUserInfoSpy).toHaveBeenCalledOnce();
       expect(consoleSpy).toHaveBeenCalledOnce();
 
@@ -89,7 +92,7 @@ describe("whoami", () => {
 
     await parent.parseAsync(["whoami", "--profile", "work"], { from: "user" });
 
-    expect(resolveConfigSpy).toHaveBeenCalledWith({ profile: "work" });
+    expect(resolveConfigSpy).toHaveBeenCalledWith({ profile: "work", requiredScopes: ["openid", "profile", "email"] });
   });
 
   it("outputs only name, email, and picture in JSON format", async () => {

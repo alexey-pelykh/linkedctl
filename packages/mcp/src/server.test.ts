@@ -84,7 +84,10 @@ describe("createMcpServer", () => {
         arguments: { text: "Hello LinkedIn" },
       });
 
-      expect(resolveConfig).toHaveBeenCalledWith({ profile: undefined });
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
       expect(createTextPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
@@ -119,7 +122,10 @@ describe("createMcpServer", () => {
         },
       });
 
-      expect(resolveConfig).toHaveBeenCalledWith({ profile: "work" });
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "work",
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
       expect(createTextPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({

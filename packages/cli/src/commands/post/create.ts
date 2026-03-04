@@ -39,7 +39,10 @@ export async function createPostAction(textOpt: string | undefined, opts: Create
   const text = await resolveText(textOpt);
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
 
-  const { config } = await resolveConfig({ profile: globals.profile });
+  const { config } = await resolveConfig({
+    profile: globals.profile,
+    requiredScopes: ["openid", "profile", "email", "w_member_social"],
+  });
   // resolveConfig guarantees oauth.accessToken and apiVersion are defined
   const accessToken = config.oauth?.accessToken ?? "";
   const apiVersion = config.apiVersion ?? "";
