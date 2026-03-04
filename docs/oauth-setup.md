@@ -67,17 +67,21 @@ LinkedCtl requires a LinkedIn API version to be configured. LinkedIn uses date-b
 
 There are three ways to set the API version:
 
-**Option A: Config file** — add `api-version` to your config file (`~/.linkedctl.yaml` or `.linkedctl.yaml` in the current directory):
+**Option A: Config file** — add `api-version` to your config file:
 
 ```yaml
 api-version: "202501"
 ```
+
+LinkedCtl searches for config files in this order: `.linkedctl.yaml` in the current directory, then `~/.linkedctl.yaml` in the home directory. When using a named profile (e.g. `--profile work`), the config is stored at `~/.linkedctl/work.yaml` instead.
 
 **Option B: Environment variable**:
 
 ```sh
 export LINKEDCTL_API_VERSION=202501
 ```
+
+When using a named profile, prefix the variable with the uppercased profile name (hyphens become underscores). For example, profile `work` reads `LINKEDCTL_WORK_API_VERSION`.
 
 **Option C: Profile creation** — when creating a named profile, pass `--api-version`:
 
@@ -103,6 +107,14 @@ This will:
 4. LinkedCtl exchanges the authorization code for access and refresh tokens
 5. Credentials are saved to `~/.linkedctl.yaml`
 
+To authenticate a **named profile** instead, add the `--profile` flag:
+
+```sh
+linkedctl --profile work auth login --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
+```
+
+Credentials for named profiles are saved to `~/.linkedctl/<profile>.yaml` (e.g. `~/.linkedctl/work.yaml`).
+
 If the browser does not open automatically, copy the URL printed in the terminal and open it manually.
 
 ### Subsequent logins
@@ -120,6 +132,8 @@ export LINKEDCTL_API_VERSION=202501
 linkedctl auth login
 ```
 
+For named profiles, use profile-prefixed variables (e.g. `LINKEDCTL_WORK_CLIENT_ID` for profile `work`).
+
 ## 7. Verify Authentication
 
 Check that authentication is working:
@@ -132,6 +146,18 @@ Expected output:
 
 ```text
 Profile: default
+Status: authenticated
+Expires: 2026-05-03T12:00:00.000Z (59d 23h remaining)
+```
+
+For a named profile:
+
+```sh
+linkedctl --profile work auth status
+```
+
+```text
+Profile: work
 Status: authenticated
 Expires: 2026-05-03T12:00:00.000Z (59d 23h remaining)
 ```
