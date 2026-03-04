@@ -22,9 +22,11 @@ function buildJwt(payload: Record<string, unknown>): string {
 
 describe("auth status", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -42,6 +44,7 @@ describe("auth status", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
     expect(consoleSpy).toHaveBeenCalledWith("Status: not configured");
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Run "linkedctl auth login" to set up authentication.');
   });
 
   it("shows not configured when access token is empty", async () => {
@@ -58,6 +61,7 @@ describe("auth status", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
     expect(consoleSpy).toHaveBeenCalledWith("Status: not configured");
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Run "linkedctl auth login" to set up authentication.');
   });
 
   it("shows authenticated with expiry for valid JWT token", async () => {
@@ -97,6 +101,7 @@ describe("auth status", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
     expect(consoleSpy).toHaveBeenCalledWith("Status: expired");
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Run "linkedctl auth login" to re-authenticate.');
   });
 
   it("shows authenticated with unknown expiry for opaque token", async () => {

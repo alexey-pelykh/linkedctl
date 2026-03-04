@@ -63,7 +63,7 @@ export function loginCommand(): Command {
     // Check for existing refresh token and attempt refresh first
     const existingRefreshToken = config.oauth?.refreshToken;
     if (existingRefreshToken !== undefined) {
-      console.log("Attempting token refresh...");
+      console.error("Attempting token refresh...");
       const refreshConfig: OAuth2Config = {
         clientId,
         clientSecret,
@@ -83,13 +83,13 @@ export function loginCommand(): Command {
         );
         await saveOAuthClientCredentials({ clientId, clientSecret }, writeOpts);
         if (profileFlag !== undefined) {
-          console.log(`Token refreshed for profile "${profileFlag}".`);
+          console.error(`Token refreshed for profile "${profileFlag}".`);
         } else {
-          console.log("Token refreshed.");
+          console.error("Token refreshed.");
         }
         return;
       } catch {
-        console.log("Token refresh failed, starting full authorization flow...");
+        console.error("Token refresh failed, starting full authorization flow...");
       }
     }
 
@@ -115,8 +115,8 @@ export function loginCommand(): Command {
     };
 
     const authUrl = buildAuthorizationUrl(oauth2Config, state, codeChallenge);
-    console.log("Opening browser for LinkedIn authorization...");
-    console.log(`If the browser does not open, visit:\n${authUrl}`);
+    console.error("Opening browser for LinkedIn authorization...");
+    console.error(`If the browser does not open, visit:\n${authUrl}`);
     openBrowser(authUrl);
 
     try {
@@ -138,9 +138,9 @@ export function loginCommand(): Command {
       );
       await saveOAuthClientCredentials({ clientId, clientSecret }, writeOpts);
       if (profileFlag !== undefined) {
-        console.log(`Authenticated and saved to profile "${profileFlag}".`);
+        console.error(`Authenticated and saved to profile "${profileFlag}".`);
       } else {
-        console.log("Authenticated successfully.");
+        console.error("Authenticated successfully.");
       }
     } finally {
       await stop();
