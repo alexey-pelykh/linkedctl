@@ -7,5 +7,11 @@ export type { LoadResult } from "./loader.js";
 export { validateConfig, isValidProfileName } from "./validate.js";
 export type { ValidationResult } from "./validate.js";
 export { applyEnvOverlay } from "./env.js";
-export { saveOAuthTokens, saveOAuthClientCredentials, clearOAuthTokens } from "./writer.js";
+export {
+  saveOAuthTokens,
+  saveOAuthClientCredentials,
+  saveOAuthScope,
+  saveOAuthPkce,
+  clearOAuthTokens,
+} from "./writer.js";
 export { resolveConfig, ConfigError } from "./resolve.js";

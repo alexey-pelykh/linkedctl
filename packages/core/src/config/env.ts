@@ -23,9 +23,11 @@ export function applyEnvOverlay(
   const accessToken = env[`${prefix}ACCESS_TOKEN`];
   const clientId = env[`${prefix}CLIENT_ID`];
   const clientSecret = env[`${prefix}CLIENT_SECRET`];
+  const scope = env[`${prefix}SCOPE`];
   const apiVersion = env[`${prefix}API_VERSION`];
 
-  const hasOauthOverride = accessToken !== undefined || clientId !== undefined || clientSecret !== undefined;
+  const hasOauthOverride =
+    accessToken !== undefined || clientId !== undefined || clientSecret !== undefined || scope !== undefined;
 
   const result: LinkedctlConfig = { ...config };
 
@@ -43,6 +45,9 @@ export function applyEnvOverlay(
     }
     if (clientSecret !== undefined) {
       result.oauth.clientSecret = clientSecret;
+    }
+    if (scope !== undefined) {
+      result.oauth.scope = scope;
     }
   }
 

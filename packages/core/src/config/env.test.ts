@@ -68,6 +68,14 @@ describe("applyEnvOverlay", () => {
     expect(result.apiVersion).toBe("202501");
   });
 
+  it("overlays scope from env", () => {
+    const config = {};
+    const result = applyEnvOverlay(config, {
+      env: { LINKEDCTL_SCOPE: "openid profile" },
+    });
+    expect(result.oauth?.scope).toBe("openid profile");
+  });
+
   it("does not mutate the original config", () => {
     const config = { apiVersion: "202501", oauth: { accessToken: "original" } };
     applyEnvOverlay(config, {

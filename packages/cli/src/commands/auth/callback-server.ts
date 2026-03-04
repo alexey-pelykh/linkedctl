@@ -29,7 +29,7 @@ export interface CallbackResult {
  * Returns an object containing the port, a promise that resolves with the
  * authorization code and state, and a stop function to shut down the server.
  */
-export async function startCallbackServer(): Promise<{
+export async function startCallbackServer(port: number): Promise<{
   port: number;
   result: Promise<CallbackResult>;
   stop: () => Promise<void>;
@@ -74,7 +74,7 @@ export async function startCallbackServer(): Promise<{
     resolveResult({ code, state });
   });
 
-  const port = await listen(server, 0);
+  const actualPort = await listen(server, port);
 
   const stop = async () => {
     await new Promise<void>((resolve, reject) => {
@@ -85,7 +85,7 @@ export async function startCallbackServer(): Promise<{
     });
   };
 
-  return { port, result, stop };
+  return { port: actualPort, result, stop };
 }
 
 function listen(server: Server, port: number): Promise<number> {

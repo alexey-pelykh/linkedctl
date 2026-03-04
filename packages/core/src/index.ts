@@ -9,6 +9,8 @@ export {
   applyEnvOverlay,
   saveOAuthTokens,
   saveOAuthClientCredentials,
+  saveOAuthScope,
+  saveOAuthPkce,
   clearOAuthTokens,
   resolveConfig,
   ConfigError,

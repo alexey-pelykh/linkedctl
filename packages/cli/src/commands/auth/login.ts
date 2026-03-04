@@ -20,16 +20,18 @@ import type { OAuth2Config } from "@linkedctl/core";
 
 import { startCallbackServer } from "./callback-server.js";
 
-const DEFAULT_SCOPE = "openid profile w_member_social";
+export const DEFAULT_REDIRECT_PORT = 18920;
 
 export function loginCommand(): Command {
   const cmd = new Command("login");
   cmd.description("Authenticate with LinkedIn via OAuth2");
   cmd.option("--client-id <id>", "OAuth2 client ID (overrides config value)");
   cmd.option("--client-secret <secret>", "OAuth2 client secret (overrides config value)");
-  cmd.option("--scope <scopes>", "OAuth2 scopes (space-separated)", DEFAULT_SCOPE);
+  cmd.option("--scope <scopes>", "OAuth2 scopes (space-separated)");
+  cmd.option("--port <number>", "local callback server port", String(DEFAULT_REDIRECT_PORT));
+  cmd.option("--pkce", "use PKCE flow (requires LinkedIn to enable it for your app)");
 
-  cmd.action(async (opts: { clientId?: string; clientSecret?: string; scope: string }) => {
+  cmd.action(async (opts: { clientId?: string; clientSecret?: string; scope?: string; port: string; pkce?: true }) => {
     const program = cmd.parent?.parent;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const profileFlag: string | undefined = program?.opts()["profile"];
@@ -44,7 +46,15 @@ export function loginCommand(): Command {
     if (clientId === undefined || clientSecret === undefined) {
       throw new Error(
         "Missing OAuth2 credentials. Provide --client-id and --client-secret, " +
-          'or store them in your config with "linkedctl auth login".',
+          'or run "linkedctl auth setup" to configure them interactively.',
+      );
+    }
+
+    // Resolve scope: CLI flag > config
+    const scope = opts.scope ?? config.oauth?.scope;
+    if (scope === undefined) {
+      throw new Error(
+        "Missing OAuth2 scope. Provide --scope, " + 'or run "linkedctl auth setup" to configure it interactively.',
       );
     }
 
@@ -58,7 +68,7 @@ export function loginCommand(): Command {
         clientId,
         clientSecret,
         redirectUri: "", // not used for refresh
-        scope: opts.scope,
+        scope,
       };
       try {
         const tokens = await refreshAccessToken(refreshConfig, existingRefreshToken);
@@ -72,26 +82,36 @@ export function loginCommand(): Command {
           writeOpts,
         );
         await saveOAuthClientCredentials({ clientId, clientSecret }, writeOpts);
-        const label = profileFlag ?? "default";
-        console.log(`Token refreshed for profile "${label}".`);
+        if (profileFlag !== undefined) {
+          console.log(`Token refreshed for profile "${profileFlag}".`);
+        } else {
+          console.log("Token refreshed.");
+        }
         return;
       } catch {
         console.log("Token refresh failed, starting full authorization flow...");
       }
     }
 
-    // Full OAuth2 authorization code flow with PKCE
-    const { port, result, stop } = await startCallbackServer();
+    // Full OAuth2 authorization code flow
+    const port = Number.parseInt(opts.port, 10);
+    const { result, stop } = await startCallbackServer(port);
     const redirectUri = `http://127.0.0.1:${port}/callback`;
     const state = randomUUID();
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = computeCodeChallenge(codeVerifier);
+    const usePkce = opts.pkce === true || config.oauth?.pkce === true;
+
+    let codeVerifier: string | undefined;
+    let codeChallenge: string | undefined;
+    if (usePkce) {
+      codeVerifier = generateCodeVerifier();
+      codeChallenge = computeCodeChallenge(codeVerifier);
+    }
 
     const oauth2Config: OAuth2Config = {
       clientId,
       clientSecret,
       redirectUri,
-      scope: opts.scope,
+      scope,
     };
 
     const authUrl = buildAuthorizationUrl(oauth2Config, state, codeChallenge);
@@ -117,8 +137,11 @@ export function loginCommand(): Command {
         writeOpts,
       );
       await saveOAuthClientCredentials({ clientId, clientSecret }, writeOpts);
-      const label = profileFlag ?? "default";
-      console.log(`Authenticated and saved to profile "${label}".`);
+      if (profileFlag !== undefined) {
+        console.log(`Authenticated and saved to profile "${profileFlag}".`);
+      } else {
+        console.log("Authenticated successfully.");
+      }
     } finally {
       await stop();
     }
