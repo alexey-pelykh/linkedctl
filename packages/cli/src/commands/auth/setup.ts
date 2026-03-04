@@ -82,6 +82,15 @@ export function setupCommand(): Command {
       const share = await rl.question("Share on LinkedIn? [y/N] ");
       if (share.trim().toLowerCase() === "y" || share.trim().toLowerCase() === "yes") {
         scopes.push("w_member_social");
+        // Posting requires the author's person URN, which is only available via
+        // the /v2/userinfo endpoint. That endpoint needs openid scopes, so we
+        // force-enable them when Share on LinkedIn is selected.
+        if (!scopes.includes("openid")) {
+          scopes.push("openid", "profile", "email");
+          process.stderr.write(
+            '  → Also enabling "Sign In with LinkedIn" scopes (required to resolve author identity for posts)\n',
+          );
+        }
       }
 
       if (scopes.length === 0) {

@@ -133,12 +133,12 @@ describe("auth setup", () => {
     });
   });
 
-  it("saves scope for Share only", () => {
+  it("saves scope for Share only (auto-includes openid scopes)", () => {
     mockReadline(["my-client-id", "my-client-secret", "n", "y", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
-      expect(saveOAuthScopeSpy).toHaveBeenCalledWith("w_member_social", undefined);
+      expect(saveOAuthScopeSpy).toHaveBeenCalledWith("w_member_social openid profile email", undefined);
     });
   });
 
