@@ -8,18 +8,21 @@ const TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
 const REVOKE_URL = "https://www.linkedin.com/oauth/v2/revoke";
 
 /**
- * Build the LinkedIn OAuth2 authorization URL that the user should open in
- * their browser. Includes a `state` parameter for CSRF protection and
- * optional PKCE `code_challenge` (S256).
+ * Build the LinkedIn OAuth2 authorization URL.
+ *
+ * When `codeChallenge` is provided, PKCE parameters (`code_challenge` and
+ * `code_challenge_method=S256`) are included in the URL.
  */
 export function buildAuthorizationUrl(config: OAuth2Config, state: string, codeChallenge?: string): string {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
-    scope: config.scope,
     state,
   });
+  if (config.scope !== undefined && config.scope !== "") {
+    params.set("scope", config.scope);
+  }
   if (codeChallenge !== undefined) {
     params.set("code_challenge", codeChallenge);
     params.set("code_challenge_method", "S256");
@@ -29,55 +32,47 @@ export function buildAuthorizationUrl(config: OAuth2Config, state: string, codeC
 
 /**
  * Exchange an authorization code for access and (optional) refresh tokens.
- * When PKCE was used during authorization, `codeVerifier` must be provided.
+ *
+ * When `codeVerifier` is provided it is included for PKCE validation.
  */
 export async function exchangeAuthorizationCode(
   config: OAuth2Config,
   code: string,
   codeVerifier?: string,
 ): Promise<OAuth2TokenResponse> {
-  const body = new URLSearchParams({
+  const params: Record<string, string> = {
     grant_type: "authorization_code",
     code,
     redirect_uri: config.redirectUri,
     client_id: config.clientId,
     client_secret: config.clientSecret,
-  });
+  };
   if (codeVerifier !== undefined) {
-    body.set("code_verifier", codeVerifier);
+    params["code_verifier"] = codeVerifier;
   }
-
-  return tokenRequest(body);
+  return tokenRequest(params);
 }
 
 /**
  * Attempt to refresh an access token using a refresh token.
  */
 export async function refreshAccessToken(config: OAuth2Config, refreshToken: string): Promise<OAuth2TokenResponse> {
-  const body = new URLSearchParams({
+  return tokenRequest({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: config.clientId,
     client_secret: config.clientSecret,
   });
-
-  return tokenRequest(body);
 }
 
 /**
  * Revoke an access token server-side via LinkedIn's OAuth2 revocation endpoint.
  */
 export async function revokeAccessToken(clientId: string, clientSecret: string, token: string): Promise<void> {
-  const body = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    token,
-  });
-
   const response = await fetch(REVOKE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, token }).toString(),
   });
 
   if (!response.ok) {
@@ -86,11 +81,13 @@ export async function revokeAccessToken(clientId: string, clientSecret: string, 
   }
 }
 
-async function tokenRequest(body: URLSearchParams): Promise<OAuth2TokenResponse> {
+async function tokenRequest(params: Record<string, string>): Promise<OAuth2TokenResponse> {
+  const body = new URLSearchParams(params).toString();
+
   const response = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    body,
   });
 
   if (!response.ok) {

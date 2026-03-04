@@ -89,13 +89,35 @@ describe("auth login", () => {
     await expect(program.parseAsync(["auth", "login"], { from: "user" })).rejects.toThrow(/Missing OAuth2 credentials/);
   });
 
+  it("throws when scope is missing", async () => {
+    loadConfigFileSpy.mockResolvedValue({
+      raw: {
+        oauth: { "client-id": "cid", "client-secret": "csecret" },
+      },
+      path: "/some/path.yaml",
+    });
+
+    const program = wrapInProgram(loginCommand());
+    await expect(program.parseAsync(["auth", "login"], { from: "user" })).rejects.toThrow(/Missing OAuth2 scope/);
+  });
+
   it("performs full OAuth flow with client credentials from flags", async () => {
     const { stopFn } = mockFullOAuthFlow();
 
     const program = wrapInProgram(loginCommand());
-    await program.parseAsync(["auth", "login", "--client-id", "my-client-id", "--client-secret", "my-client-secret"], {
-      from: "user",
-    });
+    await program.parseAsync(
+      [
+        "auth",
+        "login",
+        "--client-id",
+        "my-client-id",
+        "--client-secret",
+        "my-client-secret",
+        "--scope",
+        "openid profile",
+      ],
+      { from: "user" },
+    );
 
     // Verify tokens were saved
     expect(saveOAuthTokensSpy).toHaveBeenCalledWith(
@@ -124,6 +146,7 @@ describe("auth login", () => {
           "client-secret": "stored-client-secret",
           "refresh-token": "existing-refresh-token",
           "token-expires-at": "2025-01-01T00:00:00.000Z",
+          scope: "openid profile",
         },
         "api-version": "202501",
       },
@@ -159,6 +182,7 @@ describe("auth login", () => {
           "client-secret": "stored-client-secret",
           "refresh-token": "expired-refresh-token",
           "token-expires-at": "2025-01-01T00:00:00.000Z",
+          scope: "openid profile",
         },
         "api-version": "202501",
       },
@@ -186,6 +210,7 @@ describe("auth login", () => {
           "access-token": "old-token",
           "client-id": "profile-client-id",
           "client-secret": "profile-client-secret",
+          scope: "openid profile",
         },
         "api-version": "202501",
       },
@@ -211,27 +236,82 @@ describe("auth login", () => {
     );
   });
 
-  it("generates PKCE code challenge and verifier during full OAuth flow", async () => {
+  it("does not send PKCE parameters in standard OAuth flow", async () => {
     const { exchangeSpy } = mockFullOAuthFlow();
 
     const buildAuthSpy = vi.spyOn(core, "buildAuthorizationUrl");
 
     const program = wrapInProgram(loginCommand());
-    await program.parseAsync(["auth", "login", "--client-id", "my-client-id", "--client-secret", "my-client-secret"], {
-      from: "user",
-    });
+    await program.parseAsync(
+      [
+        "auth",
+        "login",
+        "--client-id",
+        "my-client-id",
+        "--client-secret",
+        "my-client-secret",
+        "--scope",
+        "openid profile",
+      ],
+      { from: "user" },
+    );
 
-    // Verify buildAuthorizationUrl was called with a code challenge (3rd argument)
+    // Verify buildAuthorizationUrl was called without a code challenge
+    expect(buildAuthSpy).toHaveBeenCalledOnce();
+    const codeChallenge = buildAuthSpy.mock.calls[0]?.[2];
+    expect(codeChallenge).toBeUndefined();
+
+    // Verify exchangeAuthorizationCode was called without a code verifier
+    expect(exchangeSpy).toHaveBeenCalledOnce();
+    const codeVerifier = exchangeSpy.mock.calls[0]?.[2];
+    expect(codeVerifier).toBeUndefined();
+  });
+
+  it("sends PKCE parameters when --pkce flag is used", async () => {
+    const { exchangeSpy } = mockFullOAuthFlow();
+    const buildAuthSpy = vi.spyOn(core, "buildAuthorizationUrl");
+
+    const program = wrapInProgram(loginCommand());
+    await program.parseAsync(
+      ["auth", "login", "--client-id", "cid", "--client-secret", "cs", "--scope", "openid", "--pkce"],
+      { from: "user" },
+    );
+
     expect(buildAuthSpy).toHaveBeenCalledOnce();
     const codeChallenge = buildAuthSpy.mock.calls[0]?.[2];
     expect(codeChallenge).toBeDefined();
     expect(typeof codeChallenge).toBe("string");
 
-    // Verify exchangeAuthorizationCode was called with a code verifier (3rd argument)
     expect(exchangeSpy).toHaveBeenCalledOnce();
     const codeVerifier = exchangeSpy.mock.calls[0]?.[2];
     expect(codeVerifier).toBeDefined();
     expect(typeof codeVerifier).toBe("string");
+  });
+
+  it("sends PKCE parameters when pkce is enabled in config", async () => {
+    loadConfigFileSpy.mockResolvedValue({
+      raw: {
+        oauth: {
+          "client-id": "cid",
+          "client-secret": "cs",
+          scope: "openid",
+          pkce: true,
+        },
+      },
+      path: "/some/path.yaml",
+    });
+
+    const { exchangeSpy } = mockFullOAuthFlow();
+    const buildAuthSpy = vi.spyOn(core, "buildAuthorizationUrl");
+
+    const program = wrapInProgram(loginCommand());
+    await program.parseAsync(["auth", "login"], { from: "user" });
+
+    expect(buildAuthSpy).toHaveBeenCalledOnce();
+    expect(buildAuthSpy.mock.calls[0]?.[2]).toBeDefined();
+
+    expect(exchangeSpy).toHaveBeenCalledOnce();
+    expect(exchangeSpy.mock.calls[0]?.[2]).toBeDefined();
   });
 
   it("proceeds directly to full auth when no refresh token available", async () => {
@@ -242,6 +322,7 @@ describe("auth login", () => {
           "access-token": "old-token",
           "client-id": "my-id",
           "client-secret": "my-secret",
+          scope: "openid profile",
         },
         "api-version": "202501",
       },

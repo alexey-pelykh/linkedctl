@@ -87,6 +87,36 @@ describe("validateConfig", () => {
     expect(result.errors).toEqual([expect.stringContaining('"oauth.access-token" must be a string')]);
   });
 
+  it("validates oauth scope as string", () => {
+    const result = validateConfig({
+      oauth: { scope: "openid profile email" },
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.config.oauth?.scope).toBe("openid profile email");
+  });
+
+  it("errors when oauth scope is not a string", () => {
+    const result = validateConfig({
+      oauth: { scope: 123 },
+    });
+    expect(result.errors).toEqual([expect.stringContaining('"oauth.scope" must be a string')]);
+  });
+
+  it("parses oauth pkce boolean", () => {
+    const result = validateConfig({
+      oauth: { pkce: true },
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.config.oauth?.pkce).toBe(true);
+  });
+
+  it("errors when oauth pkce is not a boolean", () => {
+    const result = validateConfig({
+      oauth: { pkce: "yes" },
+    });
+    expect(result.errors).toEqual([expect.stringContaining('"oauth.pkce" must be a boolean')]);
+  });
+
   it("warns on unknown oauth keys", () => {
     const result = validateConfig({
       oauth: { "access-token": "tok", "unknown-field": "val" },

@@ -10,7 +10,15 @@ export interface ValidationResult {
 }
 
 const KNOWN_TOP_LEVEL_KEYS = new Set(["oauth", "api-version"]);
-const KNOWN_OAUTH_KEYS = new Set(["client-id", "client-secret", "access-token", "refresh-token", "token-expires-at"]);
+const KNOWN_OAUTH_KEYS = new Set([
+  "client-id",
+  "client-secret",
+  "access-token",
+  "refresh-token",
+  "token-expires-at",
+  "scope",
+  "pkce",
+]);
 
 /**
  * Validate raw parsed YAML and produce a typed `LinkedctlConfig`.
@@ -103,6 +111,22 @@ export function validateConfig(raw: unknown): ValidationResult {
           oauth.tokenExpiresAt = oauthObj["token-expires-at"];
         } else {
           errors.push(`"oauth.token-expires-at" must be a string, got ${typeof oauthObj["token-expires-at"]}`);
+        }
+      }
+
+      if ("scope" in oauthObj) {
+        if (typeof oauthObj["scope"] === "string") {
+          oauth.scope = oauthObj["scope"];
+        } else {
+          errors.push(`"oauth.scope" must be a string, got ${typeof oauthObj["scope"]}`);
+        }
+      }
+
+      if ("pkce" in oauthObj) {
+        if (typeof oauthObj["pkce"] === "boolean") {
+          oauth.pkce = oauthObj["pkce"];
+        } else {
+          errors.push(`"oauth.pkce" must be a boolean, got ${typeof oauthObj["pkce"]}`);
         }
       }
 

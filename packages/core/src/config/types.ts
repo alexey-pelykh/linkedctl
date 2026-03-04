@@ -10,6 +10,8 @@ export interface OAuthCredentials {
   accessToken?: string | undefined;
   refreshToken?: string | undefined;
   tokenExpiresAt?: string | undefined;
+  scope?: string | undefined;
+  pkce?: boolean | undefined;
 }
 
 /**

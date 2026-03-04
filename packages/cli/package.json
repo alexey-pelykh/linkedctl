@@ -26,7 +26,8 @@
     "linkedctl-cli": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "assets"
   ],
   "keywords": [
     "linkedin",

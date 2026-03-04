@@ -67,6 +67,42 @@ export async function saveOAuthClientCredentials(
 }
 
 /**
+ * Save OAuth scope to the config file.
+ * Updates `oauth.scope`.
+ */
+export async function saveOAuthScope(
+  scope: string,
+  options?: { profile?: string | undefined; home?: string | undefined; cwd?: string | undefined },
+): Promise<void> {
+  const path = resolveWritePath(options);
+  const raw = await loadRawConfig(path);
+
+  raw["oauth"] = { ...(raw["oauth"] as Record<string, unknown> | undefined) };
+  const oauth = raw["oauth"] as Record<string, unknown>;
+  oauth["scope"] = scope;
+
+  await writeYamlFile(path, raw);
+}
+
+/**
+ * Save OAuth PKCE setting to the config file.
+ * Updates `oauth.pkce`.
+ */
+export async function saveOAuthPkce(
+  pkce: boolean,
+  options?: { profile?: string | undefined; home?: string | undefined; cwd?: string | undefined },
+): Promise<void> {
+  const path = resolveWritePath(options);
+  const raw = await loadRawConfig(path);
+
+  raw["oauth"] = { ...(raw["oauth"] as Record<string, unknown> | undefined) };
+  const oauth = raw["oauth"] as Record<string, unknown>;
+  oauth["pkce"] = pkce;
+
+  await writeYamlFile(path, raw);
+}
+
+/**
  * Clear OAuth tokens from the config file.
  * Removes `access-token`, `refresh-token`, `token-expires-at` from the oauth section
  * but preserves `client-id` and `client-secret`.

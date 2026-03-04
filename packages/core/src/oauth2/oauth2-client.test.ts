@@ -32,7 +32,7 @@ const OAUTH2_CONFIG: OAuth2Config = {
 };
 
 describe("buildAuthorizationUrl", () => {
-  it("includes all required parameters", () => {
+  it("builds URL with required parameters", () => {
     const url = buildAuthorizationUrl(OAUTH2_CONFIG, "test-state");
     const parsed = new URL(url);
 
@@ -42,17 +42,10 @@ describe("buildAuthorizationUrl", () => {
     expect(parsed.searchParams.get("redirect_uri")).toBe("http://127.0.0.1:9999/callback");
     expect(parsed.searchParams.get("scope")).toBe("openid profile");
     expect(parsed.searchParams.get("state")).toBe("test-state");
-  });
-
-  it("omits PKCE parameters when no code challenge is provided", () => {
-    const url = buildAuthorizationUrl(OAUTH2_CONFIG, "test-state");
-    const parsed = new URL(url);
-
     expect(parsed.searchParams.has("code_challenge")).toBe(false);
-    expect(parsed.searchParams.has("code_challenge_method")).toBe(false);
   });
 
-  it("includes PKCE parameters when code challenge is provided", () => {
+  it("includes PKCE parameters when codeChallenge is provided", () => {
     const url = buildAuthorizationUrl(OAUTH2_CONFIG, "test-state", "test-code-challenge");
     const parsed = new URL(url);
 
@@ -97,12 +90,24 @@ describe("exchangeAuthorizationCode", () => {
     expect(body.get("redirect_uri")).toBe("http://127.0.0.1:9999/callback");
     expect(body.get("client_id")).toBe("test-client-id");
     expect(body.get("client_secret")).toBe("test-client-secret");
+    expect(body.has("code_verifier")).toBe(false);
 
     expect(result.accessToken).toBe("new-access-token");
     expect(result.expiresIn).toBe(5184000);
     expect(result.refreshToken).toBe("new-refresh-token");
     expect(result.refreshTokenExpiresIn).toBe(31536000);
     expect(result.scope).toBe("openid profile");
+  });
+
+  it("includes code_verifier when provided", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }));
+
+    await exchangeAuthorizationCode(OAUTH2_CONFIG, "code", "my-verifier");
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const body = new URLSearchParams(init.body as string);
+    expect(body.get("code_verifier")).toBe("my-verifier");
+    expect(body.get("client_secret")).toBe("test-client-secret");
   });
 
   it("handles response without refresh token", async () => {
@@ -133,26 +138,6 @@ describe("exchangeAuthorizationCode", () => {
     fetchSpy.mockResolvedValueOnce(jsonResponse({ error: "something_wrong" }));
 
     await expect(exchangeAuthorizationCode(OAUTH2_CONFIG, "code")).rejects.toThrow(/missing access_token/);
-  });
-
-  it("omits code_verifier when not provided", async () => {
-    fetchSpy.mockResolvedValueOnce(jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }));
-
-    await exchangeAuthorizationCode(OAUTH2_CONFIG, "code");
-
-    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    const body = new URLSearchParams(init.body as string);
-    expect(body.has("code_verifier")).toBe(false);
-  });
-
-  it("includes code_verifier when provided", async () => {
-    fetchSpy.mockResolvedValueOnce(jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }));
-
-    await exchangeAuthorizationCode(OAUTH2_CONFIG, "code", "my-verifier");
-
-    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    const body = new URLSearchParams(init.body as string);
-    expect(body.get("code_verifier")).toBe("my-verifier");
   });
 });
 
@@ -236,5 +221,38 @@ describe("revokeAccessToken", () => {
     await expect(revokeAccessToken("bad-id", "bad-secret", "tok")).rejects.toThrow(
       /OAuth2 token revocation failed \(HTTP 401\)/,
     );
+  });
+});
+
+describe("form encoding", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("percent-encodes special characters in values correctly", async () => {
+    const config: OAuth2Config = {
+      clientId: "cid",
+      clientSecret: "WPL_AP1.secret==",
+      redirectUri: "http://127.0.0.1:9999/callback",
+      scope: "openid",
+    };
+
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ access_token: "tok", expires_in: 3600, scope: "openid" }));
+
+    await exchangeAuthorizationCode(config, "code");
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const body = new URLSearchParams(init.body as string);
+
+    // Values are correctly decoded from standard percent-encoding
+    expect(body.get("redirect_uri")).toBe("http://127.0.0.1:9999/callback");
+    expect(body.get("client_secret")).toBe("WPL_AP1.secret==");
   });
 });

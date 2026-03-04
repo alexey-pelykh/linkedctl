@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, rm, mkdir, writeFile, stat } from "node:fs/promises";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { parse } from "yaml";
-import { saveOAuthTokens, saveOAuthClientCredentials, clearOAuthTokens } from "./writer.js";
+import { saveOAuthTokens, saveOAuthClientCredentials, saveOAuthScope, clearOAuthTokens } from "./writer.js";
 
 function tempDir(): string {
   return join(tmpdir(), `linkedctl-test-${randomUUID()}`);
@@ -112,6 +112,47 @@ describe("saveOAuthClientCredentials", () => {
     const oauth = parsed["oauth"] as Record<string, unknown>;
     expect(oauth["access-token"]).toBe("existing-tok");
     expect(oauth["client-id"]).toBe("cid");
+  });
+});
+
+describe("saveOAuthScope", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = tempDir();
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("creates config file with scope", async () => {
+    await saveOAuthScope("openid profile email", { home: dir, cwd: dir });
+
+    const content = await readFile(join(dir, ".linkedctl.yaml"), "utf-8");
+    const parsed = parse(content) as Record<string, unknown>;
+    const oauth = parsed["oauth"] as Record<string, unknown>;
+    expect(oauth["scope"]).toBe("openid profile email");
+  });
+
+  it("preserves existing credentials when saving scope", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  client-id: "cid"
+  client-secret: "csecret"
+`,
+    );
+
+    await saveOAuthScope("w_member_social", { home: dir, cwd: dir });
+
+    const content = await readFile(join(dir, ".linkedctl.yaml"), "utf-8");
+    const parsed = parse(content) as Record<string, unknown>;
+    const oauth = parsed["oauth"] as Record<string, unknown>;
+    expect(oauth["client-id"]).toBe("cid");
+    expect(oauth["client-secret"]).toBe("csecret");
+    expect(oauth["scope"]).toBe("w_member_social");
   });
 });
 

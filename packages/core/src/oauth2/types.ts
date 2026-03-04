@@ -8,7 +8,7 @@ export interface OAuth2Config {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  scope: string;
+  scope?: string | undefined;
 }
 
 /**

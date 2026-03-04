@@ -15,14 +15,14 @@ describe("callback server", () => {
   });
 
   it("listens on a random port", async () => {
-    const server = await startCallbackServer();
+    const server = await startCallbackServer(0);
     stop = server.stop;
 
     expect(server.port).toBeGreaterThan(0);
   });
 
   it("returns code and state from callback", async () => {
-    const server = await startCallbackServer();
+    const server = await startCallbackServer(0);
     stop = server.stop;
 
     const callbackUrl = `http://127.0.0.1:${server.port}/callback?code=auth-code&state=test-state`;
@@ -38,7 +38,7 @@ describe("callback server", () => {
   });
 
   it("rejects when error parameter is present", async () => {
-    const server = await startCallbackServer();
+    const server = await startCallbackServer(0);
     stop = server.stop;
 
     // Attach rejection handler BEFORE triggering the error to avoid unhandled rejection
@@ -57,7 +57,7 @@ describe("callback server", () => {
   });
 
   it("rejects when code is missing", async () => {
-    const server = await startCallbackServer();
+    const server = await startCallbackServer(0);
     stop = server.stop;
 
     // Attach rejection handler BEFORE triggering the error to avoid unhandled rejection
@@ -74,7 +74,7 @@ describe("callback server", () => {
   });
 
   it("returns 404 for non-callback paths", async () => {
-    const server = await startCallbackServer();
+    const server = await startCallbackServer(0);
     stop = server.stop;
 
     const response = await fetch(`http://127.0.0.1:${server.port}/other`);
