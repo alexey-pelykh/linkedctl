@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { Command } from "commander";
-import { saveOAuthClientCredentials, saveOAuthScope, saveOAuthPkce } from "@linkedctl/core";
+import { saveOAuthClientCredentials, saveOAuthScope, saveOAuthPkce, saveApiVersion } from "@linkedctl/core";
 
 import { DEFAULT_REDIRECT_PORT } from "./login.js";
 
@@ -97,6 +97,7 @@ export function setupCommand(): Command {
       const pkceAnswer = await rl.question("Is PKCE enabled for your app? [y/N] ");
       const pkce = pkceAnswer.trim().toLowerCase() === "y" || pkceAnswer.trim().toLowerCase() === "yes";
       await saveOAuthPkce(pkce, writeOpts);
+      await saveApiVersion("202501", writeOpts);
 
       if (profileFlag !== undefined) {
         process.stderr.write(`\nOAuth client credentials and scope saved to profile "${profileFlag}".\n`);

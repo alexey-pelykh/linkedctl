@@ -103,6 +103,22 @@ export async function saveOAuthPkce(
 }
 
 /**
+ * Save API version to the config file.
+ * Updates `api-version`.
+ */
+export async function saveApiVersion(
+  apiVersion: string,
+  options?: { profile?: string | undefined; home?: string | undefined; cwd?: string | undefined },
+): Promise<void> {
+  const path = resolveWritePath(options);
+  const raw = await loadRawConfig(path);
+
+  raw["api-version"] = apiVersion;
+
+  await writeYamlFile(path, raw);
+}
+
+/**
  * Clear OAuth tokens from the config file.
  * Removes `access-token`, `refresh-token`, `token-expires-at` from the oauth section
  * but preserves `client-id` and `client-secret`.

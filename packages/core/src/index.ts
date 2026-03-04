@@ -11,6 +11,7 @@ export {
   saveOAuthClientCredentials,
   saveOAuthScope,
   saveOAuthPkce,
+  saveApiVersion,
   clearOAuthTokens,
   resolveConfig,
   ConfigError,

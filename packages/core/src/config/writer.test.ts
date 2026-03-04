@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, rm, mkdir, writeFile, stat } from "node:fs/promises";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { parse } from "yaml";
-import { saveOAuthTokens, saveOAuthClientCredentials, saveOAuthScope, clearOAuthTokens } from "./writer.js";
+import { saveOAuthTokens, saveOAuthClientCredentials, saveOAuthScope, saveApiVersion, clearOAuthTokens } from "./writer.js";
 
 function tempDir(): string {
   return join(tmpdir(), `linkedctl-test-${randomUUID()}`);
@@ -153,6 +153,44 @@ describe("saveOAuthScope", () => {
     expect(oauth["client-id"]).toBe("cid");
     expect(oauth["client-secret"]).toBe("csecret");
     expect(oauth["scope"]).toBe("w_member_social");
+  });
+});
+
+describe("saveApiVersion", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = tempDir();
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("creates config file with api-version", async () => {
+    await saveApiVersion("202501", { home: dir, cwd: dir });
+
+    const content = await readFile(join(dir, ".linkedctl.yaml"), "utf-8");
+    const parsed = parse(content) as Record<string, unknown>;
+    expect(parsed["api-version"]).toBe("202501");
+  });
+
+  it("preserves existing fields when saving api-version", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  client-id: "cid"
+  client-secret: "csecret"
+`,
+    );
+
+    await saveApiVersion("202501", { home: dir, cwd: dir });
+
+    const content = await readFile(join(dir, ".linkedctl.yaml"), "utf-8");
+    const parsed = parse(content) as Record<string, unknown>;
+    expect(parsed["api-version"]).toBe("202501");
+    expect((parsed["oauth"] as Record<string, unknown>)["client-id"]).toBe("cid");
   });
 });
 

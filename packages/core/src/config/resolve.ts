@@ -60,7 +60,7 @@ export async function resolveConfig(options?: ResolveOptions): Promise<ConfigRes
 
   if (config.apiVersion === undefined || config.apiVersion === "") {
     throw new ConfigError(
-      `No API version configured. Set LINKEDCTL_API_VERSION, use --api-version, or add "api-version" to your config file.`,
+      `No API version configured. Set LINKEDCTL_API_VERSION or add "api-version" to your config file.`,
     );
   }
 
