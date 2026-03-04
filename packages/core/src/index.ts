@@ -4,6 +4,7 @@
 export {
   loadConfigFile,
   CONFIG_DIR,
+  DEFAULT_API_VERSION,
   validateConfig,
   isValidProfileName,
   applyEnvOverlay,
