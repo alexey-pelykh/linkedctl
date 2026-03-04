@@ -26,5 +26,7 @@ export function createProgram(version?: string): Command {
   program.addCommand(profileCommand());
   program.addCommand(whoamiCommand());
 
+  program.addHelpText("after", "\nGet started: linkedctl auth setup");
+
   return program;
 }
