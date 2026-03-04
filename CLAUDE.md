@@ -100,13 +100,34 @@ ESLint enforces this via `eslint-plugin-header`.
 
 ### Package Exports
 
-Each package uses conditional exports with `types` + `import`:
+All packages use conditional exports with `types` + `import`. `@linkedctl/core` and `@linkedctl/cli` follow the standard single-entry pattern:
 
 ```json
 "exports": {
   ".": {
     "types": "./dist/index.d.ts",
     "import": "./dist/index.js"
+  }
+}
+```
+
+`@linkedctl/mcp` exposes three entry points (server and stdio transports):
+
+```json
+"exports": {
+  ".":        { "types": "./dist/server.d.ts", "import": "./dist/server.js" },
+  "./server": { "types": "./dist/server.d.ts", "import": "./dist/server.js" },
+  "./stdio":  { "types": "./dist/stdio.d.ts",  "import": "./dist/stdio.js"  }
+}
+```
+
+`linkedctl` (umbrella) exports the CLI entry point instead of `index`:
+
+```json
+"exports": {
+  ".": {
+    "types": "./dist/cli.d.ts",
+    "import": "./dist/cli.js"
   }
 }
 ```
