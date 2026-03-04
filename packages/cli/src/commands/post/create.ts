@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { resolveConfig, LinkedInClient, getCurrentPersonUrn, createTextPost, LinkedInApiError } from "@linkedctl/core";
 import type { PostVisibility } from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
@@ -74,8 +74,12 @@ export function createCommand(): Command {
   const cmd = new Command("create");
   cmd.description("Create a text post on LinkedIn");
   cmd.option("--text <text>", "text content of the post");
-  cmd.option("--visibility <visibility>", "post visibility (PUBLIC or CONNECTIONS)", "PUBLIC");
-  cmd.option("--format <format>", "output format (json or table)");
+  cmd.addOption(
+    new Option("--visibility <visibility>", "post visibility (PUBLIC or CONNECTIONS)")
+      .choices(["PUBLIC", "CONNECTIONS"])
+      .default("PUBLIC"),
+  );
+  cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.action(async (opts: CreateOpts, actionCmd: Command) => {
     await createPostAction(opts.text, opts, actionCmd);

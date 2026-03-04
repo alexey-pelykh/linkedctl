@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { resolveConfig, LinkedInClient, getUserInfo } from "@linkedctl/core";
 import type { OutputFormat } from "../output/index.js";
 import { resolveFormat, formatOutput } from "../output/index.js";
@@ -9,7 +9,7 @@ import { resolveFormat, formatOutput } from "../output/index.js";
 export function whoamiCommand(): Command {
   const cmd = new Command("whoami");
   cmd.description("Display the current authenticated user's profile");
-  cmd.option("--format <format>", "output format (json, table)");
+  cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.action(async (opts: Record<string, unknown>, actionCmd: Command) => {
     const rootOpts = actionCmd.optsWithGlobals();

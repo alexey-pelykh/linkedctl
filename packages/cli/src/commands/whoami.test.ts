@@ -95,6 +95,15 @@ describe("whoami", () => {
     expect(resolveConfigSpy).toHaveBeenCalledWith({ profile: "work", requiredScopes: ["openid", "profile", "email"] });
   });
 
+  it("rejects invalid --format value", async () => {
+    const cmd = whoamiCommand();
+    cmd.exitOverride();
+
+    await expect(cmd.parseAsync(["--format", "xml"], { from: "user" })).rejects.toThrow(
+      /Allowed choices are json, table/,
+    );
+  });
+
   it("outputs only name, email, and picture in JSON format", async () => {
     const cmd = whoamiCommand();
     await cmd.parseAsync(["--format", "json"], { from: "user" });
