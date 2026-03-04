@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { authCommand } from "./commands/auth/index.js";
+import { completionCommand } from "./commands/completion.js";
 import { postCommand } from "./commands/post/index.js";
 import { profileCommand } from "./commands/profile/index.js";
 import { whoamiCommand } from "./commands/whoami.js";
@@ -20,6 +21,7 @@ export function createProgram(version?: string): Command {
   program.option("--no-color", "disable color output");
 
   program.addCommand(authCommand());
+  program.addCommand(completionCommand(program));
   program.addCommand(postCommand());
   program.addCommand(profileCommand());
   program.addCommand(whoamiCommand());
