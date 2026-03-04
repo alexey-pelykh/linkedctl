@@ -123,7 +123,10 @@ export function loginCommand(): Command {
       const callback = await result;
 
       if (callback.state !== state) {
-        throw new Error("OAuth2 state mismatch — possible CSRF attack");
+        throw new Error(
+          "OAuth2 state mismatch — possible CSRF attack. " +
+            'The authorization response may have been tampered with. Run "linkedctl auth login" to try again.',
+        );
       }
 
       const tokens = await exchangeAuthorizationCode(oauth2Config, callback.code, codeVerifier);

@@ -14,7 +14,7 @@ export function deleteCommand(): Command {
 
   cmd.action(async (name: string) => {
     if (!isValidProfileName(name)) {
-      throw new Error(`Invalid profile name "${name}".`);
+      throw new Error(`Invalid profile name "${name}". Names must not contain path separators or be empty.`);
     }
 
     const profilePath = join(homedir(), CONFIG_DIR, `${name}.yaml`);
@@ -23,7 +23,7 @@ export function deleteCommand(): Command {
       await unlink(profilePath);
     } catch (error: unknown) {
       if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT") {
-        throw new Error(`Profile "${name}" not found.`);
+        throw new Error(`Profile "${name}" not found. Run "linkedctl profile list" to see available profiles.`);
       }
       throw error;
     }

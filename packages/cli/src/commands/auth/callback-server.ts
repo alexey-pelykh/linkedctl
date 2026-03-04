@@ -65,7 +65,12 @@ export async function startCallbackServer(port: number): Promise<{
     if (code === null || state === null) {
       res.writeHead(400, { "Content-Type": "text/html" });
       res.end(ERROR_HTML);
-      rejectResult(new Error("Missing code or state in callback"));
+      rejectResult(
+        new Error(
+          "Missing code or state in callback. " +
+            'The OAuth2 flow may have been interrupted. Run "linkedctl auth login" to try again.',
+        ),
+      );
       return;
     }
 

@@ -18,12 +18,12 @@ export function showCommand(): Command {
 
   cmd.action(async (name: string) => {
     if (!isValidProfileName(name)) {
-      throw new Error(`Invalid profile name "${name}".`);
+      throw new Error(`Invalid profile name "${name}". Names must not contain path separators or be empty.`);
     }
 
     const { raw, path } = await loadConfigFile({ profile: name });
     if (path === undefined) {
-      throw new Error(`Profile "${name}" not found.`);
+      throw new Error(`Profile "${name}" not found. Run "linkedctl profile list" to see available profiles.`);
     }
 
     const { config } = validateConfig(raw);
