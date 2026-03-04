@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 export type { OAuthCredentials, LinkedctlConfig, ConfigResult, ResolveOptions } from "./types.js";
-export { loadConfigFile, CONFIG_DIR } from "./loader.js";
+export { loadConfigFile, CONFIG_DIR, DEFAULT_API_VERSION } from "./loader.js";
 export type { LoadResult } from "./loader.js";
 export { validateConfig, isValidProfileName } from "./validate.js";
 export type { ValidationResult } from "./validate.js";

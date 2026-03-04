@@ -48,15 +48,28 @@ describe("profile create", () => {
     vi.restoreAllMocks();
   });
 
-  it("creates a profile with access token and api version", async () => {
+  it("creates a profile with explicit api version", async () => {
     const cmd = createCommand();
-    await cmd.parseAsync(["personal", "--access-token", "tok123", "--api-version", "202501"], { from: "user" });
+    await cmd.parseAsync(["personal", "--access-token", "tok123", "--api-version", "202502"], { from: "user" });
 
     expect(loadConfigFileSpy).toHaveBeenCalledWith({ profile: "personal" });
     expect(vi.mocked(mkdir)).toHaveBeenCalledWith(join("/mock/home", ".linkedctl"), { recursive: true });
     expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
       join("/mock/home", ".linkedctl", "personal.yaml"),
-      'api-version: "202501"\n',
+      'api-version: "202502"\n',
+      { mode: 0o600 },
+    );
+    expect(saveOAuthTokensSpy).toHaveBeenCalledWith({ accessToken: "tok123" }, { profile: "personal" });
+    expect(consoleSpy).toHaveBeenCalledWith('Profile "personal" created.');
+  });
+
+  it("defaults api version when not specified", async () => {
+    const cmd = createCommand();
+    await cmd.parseAsync(["personal", "--access-token", "tok123"], { from: "user" });
+
+    expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
+      join("/mock/home", ".linkedctl", "personal.yaml"),
+      `api-version: "${core.DEFAULT_API_VERSION}"\n`,
       { mode: 0o600 },
     );
     expect(saveOAuthTokensSpy).toHaveBeenCalledWith({ accessToken: "tok123" }, { profile: "personal" });
@@ -70,16 +83,16 @@ describe("profile create", () => {
     });
 
     const cmd = createCommand();
-    await expect(
-      cmd.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" }),
-    ).rejects.toThrow(/already exists/);
+    await expect(cmd.parseAsync(["personal", "--access-token", "tok"], { from: "user" })).rejects.toThrow(
+      /already exists/,
+    );
   });
 
   it("throws for invalid profile name", async () => {
     const cmd = createCommand();
-    await expect(
-      cmd.parseAsync(["../evil", "--access-token", "tok", "--api-version", "v"], { from: "user" }),
-    ).rejects.toThrow(/Invalid profile name/);
+    await expect(cmd.parseAsync(["../evil", "--access-token", "tok"], { from: "user" })).rejects.toThrow(
+      /Invalid profile name/,
+    );
   });
 
   it("does not write files when profile already exists", async () => {
@@ -89,9 +102,7 @@ describe("profile create", () => {
     });
 
     const cmd = createCommand();
-    await expect(
-      cmd.parseAsync(["personal", "--access-token", "tok", "--api-version", "v"], { from: "user" }),
-    ).rejects.toThrow();
+    await expect(cmd.parseAsync(["personal", "--access-token", "tok"], { from: "user" })).rejects.toThrow();
 
     expect(vi.mocked(writeFile)).not.toHaveBeenCalled();
     expect(saveOAuthTokensSpy).not.toHaveBeenCalled();

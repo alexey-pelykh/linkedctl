@@ -5,14 +5,14 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { writeFile, mkdir } from "node:fs/promises";
 import { Command } from "commander";
-import { loadConfigFile, isValidProfileName, saveOAuthTokens, CONFIG_DIR } from "@linkedctl/core";
+import { loadConfigFile, isValidProfileName, saveOAuthTokens, CONFIG_DIR, DEFAULT_API_VERSION } from "@linkedctl/core";
 
 export function createCommand(): Command {
   const cmd = new Command("create");
   cmd.description("Create a new profile");
   cmd.argument("<name>", "profile name");
   cmd.requiredOption("--access-token <token>", "OAuth2 access token");
-  cmd.requiredOption("--api-version <version>", "LinkedIn API version (e.g. 202501)");
+  cmd.option("--api-version <version>", "LinkedIn API version", DEFAULT_API_VERSION);
 
   cmd.action(async (name: string, opts: { accessToken: string; apiVersion: string }) => {
     if (!isValidProfileName(name)) {
