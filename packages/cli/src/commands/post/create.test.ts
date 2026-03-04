@@ -131,6 +131,42 @@ describe("post create", () => {
     );
   });
 
+  it("rejects invalid --visibility value", async () => {
+    const program = createProgram();
+    for (const cmd of program.commands) {
+      cmd.exitOverride();
+      for (const sub of cmd.commands) sub.exitOverride();
+    }
+
+    await expect(
+      program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--visibility", "PRIVATE"]),
+    ).rejects.toThrow(/Allowed choices are PUBLIC, CONNECTIONS/);
+  });
+
+  it("rejects invalid --format value on post create", async () => {
+    const program = createProgram();
+    for (const cmd of program.commands) {
+      cmd.exitOverride();
+      for (const sub of cmd.commands) sub.exitOverride();
+    }
+
+    await expect(
+      program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--format", "xml"]),
+    ).rejects.toThrow(/Allowed choices are json, table/);
+  });
+
+  it("rejects invalid --format value on post shorthand", async () => {
+    const program = createProgram();
+    for (const cmd of program.commands) {
+      cmd.exitOverride();
+      for (const sub of cmd.commands) sub.exitOverride();
+    }
+
+    await expect(program.parseAsync(["node", "linkedctl", "post", "Hello", "--format", "xml"])).rejects.toThrow(
+      /Allowed choices are json, table/,
+    );
+  });
+
   it("wraps API errors with actionable message", async () => {
     const { LinkedInApiError } = await import("@linkedctl/core");
     vi.mocked(coreMock.createTextPost).mockRejectedValueOnce(new LinkedInApiError("Forbidden", 403));
