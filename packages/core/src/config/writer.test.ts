@@ -7,7 +7,13 @@ import { randomUUID } from "node:crypto";
 import { readFile, rm, mkdir, writeFile, stat } from "node:fs/promises";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { parse } from "yaml";
-import { saveOAuthTokens, saveOAuthClientCredentials, saveOAuthScope, saveApiVersion, clearOAuthTokens } from "./writer.js";
+import {
+  saveOAuthTokens,
+  saveOAuthClientCredentials,
+  saveOAuthScope,
+  saveApiVersion,
+  clearOAuthTokens,
+} from "./writer.js";
 
 function tempDir(): string {
   return join(tmpdir(), `linkedctl-test-${randomUUID()}`);
