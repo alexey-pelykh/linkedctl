@@ -68,6 +68,34 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
+### Available Tools
+
+#### `post_create`
+
+Create a text post on LinkedIn.
+
+| Parameter    | Type     | Required | Description                                        |
+| ------------ | -------- | -------- | -------------------------------------------------- |
+| `text`       | `string` | Yes      | The text content of the post                       |
+| `visibility` | `string` | No       | `"PUBLIC"` or `"CONNECTIONS"` (default `"PUBLIC"`) |
+| `profile`    | `string` | No       | Profile name to use from config file               |
+
+#### `auth_status`
+
+Show authentication status for a profile.
+
+| Parameter | Type     | Required | Description                                           |
+| --------- | -------- | -------- | ----------------------------------------------------- |
+| `profile` | `string` | No       | Profile name to check (uses default if not specified) |
+
+#### `auth_revoke`
+
+Revoke the access token server-side and clear local credentials for a profile.
+
+| Parameter | Type     | Required | Description                                            |
+| --------- | -------- | -------- | ------------------------------------------------------ |
+| `profile` | `string` | No       | Profile name to revoke (uses default if not specified) |
+
 ## Configuration
 
 ### OAuth 2.0 (Recommended)
