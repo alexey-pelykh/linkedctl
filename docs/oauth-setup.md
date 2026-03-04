@@ -61,7 +61,33 @@ You can verify your available scopes under the **Auth** tab in the **OAuth 2.0 s
 > **Security:** Treat your client secret like a password. Do not commit it to version
 > control or share it publicly.
 
-## 5. Authenticate with LinkedCtl
+## 5. Set the API Version
+
+LinkedCtl requires a LinkedIn API version to be configured. LinkedIn uses date-based version strings (e.g. `202501`). You can find the current version in the [LinkedIn API documentation](https://learn.microsoft.com/en-us/linkedin/marketing/versioning).
+
+There are three ways to set the API version:
+
+**Option A: Config file** — add `api-version` to your config file (`~/.linkedctl.yaml` or `.linkedctl.yaml` in the current directory):
+
+```yaml
+api-version: "202501"
+```
+
+**Option B: Environment variable**:
+
+```sh
+export LINKEDCTL_API_VERSION=202501
+```
+
+**Option C: Profile creation** — when creating a named profile, pass `--api-version`:
+
+```sh
+linkedctl profile create myprofile --access-token YOUR_TOKEN --api-version 202501
+```
+
+> **Note:** The API version is required. If it is not set, LinkedCtl will exit with a `ConfigError` message telling you to set `LINKEDCTL_API_VERSION`, use `--api-version`, or add `api-version` to your config file.
+
+## 6. Authenticate with LinkedCtl
 
 Run the login command with your credentials:
 
@@ -90,10 +116,11 @@ Instead of passing flags, you can set environment variables:
 ```sh
 export LINKEDCTL_CLIENT_ID=YOUR_CLIENT_ID
 export LINKEDCTL_CLIENT_SECRET=YOUR_CLIENT_SECRET
+export LINKEDCTL_API_VERSION=202501
 linkedctl auth login
 ```
 
-## 6. Verify Authentication
+## 7. Verify Authentication
 
 Check that authentication is working:
 
@@ -123,7 +150,7 @@ name     email              picture
 Jane Doe jane@example.com   https://media.licdn.com/...
 ```
 
-## 7. Start Using LinkedCtl
+## 8. Start Using LinkedCtl
 
 You are now ready to use LinkedCtl. For example, create a post:
 
