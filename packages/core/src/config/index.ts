@@ -12,6 +12,7 @@ export {
   saveOAuthClientCredentials,
   saveOAuthScope,
   saveOAuthPkce,
+  saveApiVersion,
   clearOAuthTokens,
 } from "./writer.js";
 export { resolveConfig, ConfigError } from "./resolve.js";

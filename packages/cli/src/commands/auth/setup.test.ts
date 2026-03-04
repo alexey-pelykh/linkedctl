@@ -57,6 +57,7 @@ describe("auth setup", () => {
   let saveOAuthClientCredentialsSpy: ReturnType<typeof vi.spyOn>;
   let saveOAuthScopeSpy: ReturnType<typeof vi.spyOn>;
   let saveOAuthPkceSpy: ReturnType<typeof vi.spyOn>;
+  let saveApiVersionSpy: ReturnType<typeof vi.spyOn>;
   let stderrSpy: ReturnType<typeof vi.spyOn>;
   let copyFileSpy: ReturnType<typeof vi.spyOn>;
 
@@ -64,6 +65,7 @@ describe("auth setup", () => {
     saveOAuthClientCredentialsSpy = vi.spyOn(core, "saveOAuthClientCredentials").mockResolvedValue(undefined);
     saveOAuthScopeSpy = vi.spyOn(core, "saveOAuthScope").mockResolvedValue(undefined);
     saveOAuthPkceSpy = vi.spyOn(core, "saveOAuthPkce").mockResolvedValue(undefined);
+    saveApiVersionSpy = vi.spyOn(core, "saveApiVersion").mockResolvedValue(undefined);
     stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     copyFileSpy = vi.spyOn(fsPromises, "copyFile").mockResolvedValue(undefined);
   });
@@ -207,6 +209,24 @@ describe("auth setup", () => {
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
       expect(saveOAuthPkceSpy).toHaveBeenCalledWith(false, undefined);
+    });
+  });
+
+  it("saves default api-version", () => {
+    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+
+    const program = wrapInProgram(setupCommand());
+    return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
+      expect(saveApiVersionSpy).toHaveBeenCalledWith("202501", undefined);
+    });
+  });
+
+  it("saves api-version with profile flag", () => {
+    mockReadline(["my-client-id", "my-client-secret", "y", "n", "n"]);
+
+    const program = wrapInProgram(setupCommand());
+    return program.parseAsync(["--profile", "work", "auth", "setup"], { from: "user" }).then(() => {
+      expect(saveApiVersionSpy).toHaveBeenCalledWith("202501", { profile: "work" });
     });
   });
 
