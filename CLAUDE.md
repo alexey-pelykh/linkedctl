@@ -46,8 +46,11 @@ pnpm install          # Install dependencies
 pnpm build            # Build all packages (via Turbo)
 pnpm test             # Run unit tests
 pnpm test:e2e         # Run E2E tests (sequential)
+pnpm format:check     # Check Prettier formatting
+pnpm typecheck        # Type-check all packages (via Turbo)
 pnpm lint             # Lint all packages
 pnpm license-check    # Verify dependency licenses
+pnpm publish-check    # Validate publish manifests
 pnpm dev              # Watch mode
 ```
 
@@ -139,7 +142,7 @@ All packages use conditional exports with `types` + `import`. `@linkedctl/core` 
 
 ## CI/CD
 
-- **CI**: Runs on push/PR to `main`; 3-OS matrix (ubuntu, macos, windows); builds, lints, license-checks, tests
+- **CI**: Runs on push/PR to `main`; 3-OS matrix (ubuntu, macos, windows); format-checks, builds, type-checks, lints, license-checks, publish-checks, tests
 - **Release**: Triggered by GitHub Release publish; validates, stamps version from git tag, publishes to npm with provenance
 - **Setup**: Composite action at `.github/actions/setup/` (pnpm + Node.js 24 + frozen lockfile + Turbo cache)
 - Coverage uploaded to Codecov on ubuntu only
