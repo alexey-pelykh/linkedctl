@@ -98,7 +98,71 @@ Revoke the access token server-side and clear local credentials for a profile.
 
 ## Configuration
 
-### OAuth 2.0 (Recommended)
+### Config File Format
+
+LinkedCtl stores configuration in YAML files. Each file represents a single profile:
+
+```yaml
+api-version: "202501"
+oauth:
+    client-id: "YOUR_CLIENT_ID"
+    client-secret: "YOUR_CLIENT_SECRET"
+    access-token: "YOUR_ACCESS_TOKEN"
+    refresh-token: "YOUR_REFRESH_TOKEN"
+    token-expires-at: "2026-05-03T12:00:00.000Z"
+```
+
+**Available keys:**
+
+| Key                      | Description                           |
+| ------------------------ | ------------------------------------- |
+| `api-version`            | LinkedIn API version (e.g. `202501`)  |
+| `oauth.client-id`        | OAuth 2.0 client ID                   |
+| `oauth.client-secret`    | OAuth 2.0 client secret               |
+| `oauth.access-token`     | OAuth 2.0 access token                |
+| `oauth.refresh-token`    | OAuth 2.0 refresh token               |
+| `oauth.token-expires-at` | Token expiration timestamp (ISO 8601) |
+
+Config files are written with `0600` permissions (owner read/write only).
+
+### File Location and Precedence
+
+Without a profile, LinkedCtl searches for config files in this order:
+
+1. `.linkedctl.yaml` in the current working directory
+2. `~/.linkedctl.yaml` in the home directory
+
+The first file found is used. When writing (e.g. after `auth login`), LinkedCtl writes to the CWD file if it exists, otherwise to the home directory file.
+
+### Profiles
+
+Profiles let you manage multiple LinkedIn accounts or configurations. Each profile is stored as a separate YAML file under `~/.linkedctl/`:
+
+| Profile    | Config file path             |
+| ---------- | ---------------------------- |
+| (default)  | `~/.linkedctl.yaml`          |
+| `work`     | `~/.linkedctl/work.yaml`     |
+| `personal` | `~/.linkedctl/personal.yaml` |
+
+Use the `--profile` flag with any command:
+
+```sh
+linkedctl --profile work auth login --client-id ID --client-secret SECRET
+linkedctl --profile work post "Hello from my work account!"
+```
+
+Manage profiles with the `profile` command:
+
+```sh
+linkedctl profile create work --access-token YOUR_TOKEN --api-version 202501
+linkedctl profile list
+linkedctl profile show work
+linkedctl profile delete work
+```
+
+### Authentication Methods
+
+#### OAuth 2.0 (Recommended)
 
 LinkedCtl supports OAuth 2.0 with your own LinkedIn Developer App:
 
@@ -106,7 +170,7 @@ LinkedCtl supports OAuth 2.0 with your own LinkedIn Developer App:
 linkedctl auth login --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
 ```
 
-### Direct Token
+#### Direct Token
 
 If you already have an access token from another application:
 
@@ -122,6 +186,27 @@ linkedctl auth token --access-token YOUR_TOKEN
 | `LINKEDCTL_CLIENT_SECRET` | LinkedIn OAuth 2.0 client secret                         |
 | `LINKEDCTL_ACCESS_TOKEN`  | Direct access token (bypasses OAuth flow)                |
 | `LINKEDCTL_API_VERSION`   | LinkedIn API version string (e.g. `202501`) **required** |
+
+Environment variables take precedence over config file values.
+
+#### Profile-Prefixed Environment Variables
+
+When using a named profile, LinkedCtl also reads profile-prefixed environment variables. The profile name is uppercased with hyphens converted to underscores:
+
+| Profile    | Variable                          |
+| ---------- | --------------------------------- |
+| (default)  | `LINKEDCTL_ACCESS_TOKEN`          |
+| `work`     | `LINKEDCTL_WORK_ACCESS_TOKEN`     |
+| `my-brand` | `LINKEDCTL_MY_BRAND_ACCESS_TOKEN` |
+
+The same pattern applies to `CLIENT_ID`, `CLIENT_SECRET`, and `API_VERSION`.
+
+### Precedence Order
+
+Configuration values are resolved in this order (highest priority first):
+
+1. **Environment variables** (profile-prefixed if a profile is active)
+2. **Config file** (profile-specific file, or CWD/home fallback)
 
 ## CLI Reference
 
