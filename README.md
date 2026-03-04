@@ -88,11 +88,12 @@ linkedctl auth token --access-token YOUR_TOKEN
 
 ### Environment Variables
 
-| Variable                  | Description                               |
-| ------------------------- | ----------------------------------------- |
-| `LINKEDCTL_CLIENT_ID`     | LinkedIn OAuth 2.0 client ID              |
-| `LINKEDCTL_CLIENT_SECRET` | LinkedIn OAuth 2.0 client secret          |
-| `LINKEDCTL_ACCESS_TOKEN`  | Direct access token (bypasses OAuth flow) |
+| Variable                  | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| `LINKEDCTL_CLIENT_ID`     | LinkedIn OAuth 2.0 client ID                             |
+| `LINKEDCTL_CLIENT_SECRET` | LinkedIn OAuth 2.0 client secret                         |
+| `LINKEDCTL_ACCESS_TOKEN`  | Direct access token (bypasses OAuth flow)                |
+| `LINKEDCTL_API_VERSION`   | LinkedIn API version string (e.g. `202501`) **required** |
 
 ## Disclaimer
 
