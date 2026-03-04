@@ -2,11 +2,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { createProgram } from "@linkedctl/cli";
 import { startStdioServer } from "@linkedctl/mcp/stdio";
 
-const program = createProgram();
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json") as { version: string };
+
+const program = createProgram(version);
 
 const mcpCommand = new Command("mcp");
 mcpCommand.description("Start the MCP server on stdio transport");
