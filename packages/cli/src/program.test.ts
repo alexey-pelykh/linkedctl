@@ -14,4 +14,12 @@ describe("createProgram", () => {
     const program = createProgram();
     expect(program.version()).toBeUndefined();
   });
+
+  it("includes getting-started hint in help output", () => {
+    const program = createProgram();
+    let helpOutput = "";
+    program.configureOutput({ writeOut: (str: string) => (helpOutput += str) });
+    program.outputHelp();
+    expect(helpOutput).toContain("Get started: linkedctl auth setup");
+  });
 });
