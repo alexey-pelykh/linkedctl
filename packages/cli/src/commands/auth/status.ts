@@ -39,7 +39,7 @@ export function statusCommand(): Command {
     if (config.oauth?.accessToken === undefined || config.oauth.accessToken === "") {
       console.log(`Profile: ${label}`);
       console.log("Status: not configured");
-      console.log('Run "linkedctl auth login" to set up authentication.');
+      console.error('Run "linkedctl auth login" to set up authentication.');
       return;
     }
 
@@ -56,7 +56,7 @@ export function statusCommand(): Command {
     if (expiry.isExpired) {
       console.log("Status: expired");
       console.log(`Expired: ${expiry.expiresAt.toISOString()}`);
-      console.log('Run "linkedctl auth login" to re-authenticate.');
+      console.error('Run "linkedctl auth login" to re-authenticate.');
       return;
     }
 

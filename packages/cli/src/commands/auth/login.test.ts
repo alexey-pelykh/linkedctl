@@ -76,7 +76,7 @@ describe("auth login", () => {
     loadConfigFileSpy = vi.spyOn(core, "loadConfigFile").mockResolvedValue({ raw: undefined, path: undefined });
     saveOAuthTokensSpy = vi.spyOn(core, "saveOAuthTokens").mockResolvedValue(undefined);
     saveOAuthClientCredentialsSpy = vi.spyOn(core, "saveOAuthClientCredentials").mockResolvedValue(undefined);
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
