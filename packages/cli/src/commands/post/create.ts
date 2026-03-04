@@ -15,11 +15,17 @@ interface CreateOpts {
 }
 
 /**
- * Resolve the post text from options, arguments, or stdin.
+ * Resolve the post text from --text option, positional argument, or stdin.
+ *
+ * Precedence: --text > positional argument > stdin.
  */
-async function resolveText(textOpt: string | undefined): Promise<string> {
+async function resolveText(textOpt: string | undefined, textArg: string | undefined): Promise<string> {
   if (textOpt !== undefined && textOpt !== "") {
     return textOpt;
+  }
+
+  if (textArg !== undefined && textArg !== "") {
+    return textArg;
   }
 
   if (!process.stdin.isTTY) {
@@ -35,8 +41,8 @@ async function resolveText(textOpt: string | undefined): Promise<string> {
 /**
  * Shared action handler for creating a text post.
  */
-export async function createPostAction(textOpt: string | undefined, opts: CreateOpts, cmd: Command): Promise<void> {
-  const text = await resolveText(textOpt);
+export async function createPostAction(textArg: string | undefined, opts: CreateOpts, cmd: Command): Promise<void> {
+  const text = await resolveText(opts.text, textArg);
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
 
   const { config } = await resolveConfig({
@@ -72,8 +78,9 @@ export async function createPostAction(textOpt: string | undefined, opts: Create
 
 export function createCommand(): Command {
   const cmd = new Command("create");
-  cmd.description("Create a text post on LinkedIn");
-  cmd.option("--text <text>", "text content of the post");
+  cmd.description("Create a text post on LinkedIn (text: --text > positional > stdin)");
+  cmd.argument("[text]", "text content of the post");
+  cmd.option("--text <text>", "text content of the post (takes precedence over positional argument)");
   cmd.addOption(
     new Option("--visibility <visibility>", "post visibility (PUBLIC or CONNECTIONS)")
       .choices(["PUBLIC", "CONNECTIONS"])
@@ -81,8 +88,8 @@ export function createCommand(): Command {
   );
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
-  cmd.action(async (opts: CreateOpts, actionCmd: Command) => {
-    await createPostAction(opts.text, opts, actionCmd);
+  cmd.action(async (text: string | undefined, opts: CreateOpts, actionCmd: Command) => {
+    await createPostAction(text, opts, actionCmd);
   });
 
   return cmd;

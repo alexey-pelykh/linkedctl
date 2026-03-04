@@ -167,6 +167,30 @@ describe("post create", () => {
     );
   });
 
+  it("creates a post with positional argument on post create", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "create", "Hello positional"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        text: "Hello positional",
+      }),
+    );
+  });
+
+  it("--text takes precedence over positional argument on post create", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "create", "positional", "--text", "from option"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        text: "from option",
+      }),
+    );
+  });
+
   it("wraps API errors with actionable message", async () => {
     const { LinkedInApiError } = await import("@linkedctl/core");
     vi.mocked(coreMock.createTextPost).mockRejectedValueOnce(new LinkedInApiError("Forbidden", 403));
