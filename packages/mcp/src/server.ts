@@ -36,7 +36,10 @@ export function createMcpServer(): McpServer {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({ profile: args.profile });
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
       // resolveConfig guarantees oauth.accessToken and apiVersion are defined
       const accessToken = config.oauth?.accessToken ?? "";
       const apiVersion = config.apiVersion ?? "";

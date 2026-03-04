@@ -123,7 +123,12 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "--profile", "work", "post", "create", "--text", "Hello"]);
 
-    expect(coreMock.resolveConfig).toHaveBeenCalledWith(expect.objectContaining({ profile: "work" }));
+    expect(coreMock.resolveConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: "work",
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      }),
+    );
   });
 
   it("wraps API errors with actionable message", async () => {

@@ -147,6 +147,61 @@ api-version: "202501"
     expect(config.apiVersion).toBe("202501");
   });
 
+  it("throws ConfigError when required scopes are missing", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  access-token: "tok"
+  scope: "openid profile"
+api-version: "202501"
+`,
+    );
+
+    await expect(
+      resolveConfig({ home: dir, cwd: dir, env: {}, requiredScopes: ["openid", "profile", "email"] }),
+    ).rejects.toThrow(/Missing required OAuth scopes: email/);
+  });
+
+  it("passes when all required scopes are present", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  access-token: "tok"
+  scope: "openid profile email"
+api-version: "202501"
+`,
+    );
+
+    const { config } = await resolveConfig({
+      home: dir,
+      cwd: dir,
+      env: {},
+      requiredScopes: ["openid", "profile", "email"],
+    });
+    expect(config.oauth?.accessToken).toBe("tok");
+  });
+
+  it("skips scope validation when scope field is not set", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  access-token: "tok"
+api-version: "202501"
+`,
+    );
+
+    const { config } = await resolveConfig({
+      home: dir,
+      cwd: dir,
+      env: {},
+      requiredScopes: ["openid", "profile", "email"],
+    });
+    expect(config.oauth?.accessToken).toBe("tok");
+  });
+
   it("returns warnings for unknown keys", async () => {
     await mkdir(dir, { recursive: true });
     await writeFile(

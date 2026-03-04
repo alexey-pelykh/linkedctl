@@ -39,4 +39,5 @@ export interface ResolveOptions {
   cwd?: string | undefined;
   home?: string | undefined;
   env?: Record<string, string | undefined> | undefined;
+  requiredScopes?: string[] | undefined;
 }

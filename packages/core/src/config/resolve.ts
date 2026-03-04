@@ -64,6 +64,24 @@ export async function resolveConfig(options?: ResolveOptions): Promise<ConfigRes
     );
   }
 
+  // 5. Validate required scopes
+  const requiredScopes = options?.requiredScopes;
+  const configuredScope = config.oauth?.scope;
+  if (
+    requiredScopes !== undefined &&
+    requiredScopes.length > 0 &&
+    configuredScope !== undefined &&
+    configuredScope !== ""
+  ) {
+    const grantedScopes = configuredScope.split(" ");
+    const missingScopes = requiredScopes.filter((s) => !grantedScopes.includes(s));
+    if (missingScopes.length > 0) {
+      throw new ConfigError(
+        `Missing required OAuth scopes: ${missingScopes.join(", ")}. Re-run "linkedctl auth setup" to configure the required scopes, then "linkedctl auth login" to re-authenticate.`,
+      );
+    }
+  }
+
   return { config, warnings };
 }
 

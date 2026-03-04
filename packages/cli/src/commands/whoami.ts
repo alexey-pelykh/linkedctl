@@ -15,7 +15,7 @@ export function whoamiCommand(): Command {
     const rootOpts = actionCmd.optsWithGlobals();
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;
 
-    const { config } = await resolveConfig({ profile: profileFlag });
+    const { config } = await resolveConfig({ profile: profileFlag, requiredScopes: ["openid", "profile", "email"] });
     // resolveConfig guarantees oauth.accessToken and apiVersion are defined
     const accessToken = config.oauth?.accessToken ?? "";
     const apiVersion = config.apiVersion ?? "";
