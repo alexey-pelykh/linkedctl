@@ -14,6 +14,7 @@ export function createProgram(): Command {
   const program = new Command("linkedctl");
   program.description("CLI for the LinkedIn API");
   program.option("--profile <name>", "profile to use from config file");
+  program.option("--no-color", "disable color output");
 
   program.addCommand(authCommand());
   program.addCommand(postCommand());
