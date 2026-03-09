@@ -502,4 +502,61 @@ describe("LinkedInClient", () => {
       ).rejects.toThrow(LinkedInApiError);
     });
   });
+
+  describe("uploadBinary", () => {
+    it("sends PUT with binary data and Authorization header", async () => {
+      const response = new Response(null, {
+        status: 200,
+        headers: { ETag: '"etag-123"' },
+      });
+      fetchSpy.mockResolvedValueOnce(response);
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      const data = Buffer.from("chunk-data");
+      await client.uploadBinary("https://upload.example.com/chunk/1", data);
+
+      expect(fetchSpy).toHaveBeenCalledOnce();
+      const [url, init] = fetchSpy.mock.calls[0];
+      expect(url).toBe("https://upload.example.com/chunk/1");
+      expect(init.method).toBe("PUT");
+      expect(init.headers.get("Authorization")).toBe("Bearer test-token");
+      expect(init.headers.get("Content-Type")).toBe("application/octet-stream");
+      expect(init.headers.get("User-Agent")).toBe("test-agent");
+      expect(init.body).toBe(data);
+    });
+
+    it("does not send REST.li protocol headers", async () => {
+      fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      await client.uploadBinary("https://upload.example.com/chunk/1", Buffer.from("data"));
+
+      const [, init] = fetchSpy.mock.calls[0];
+      expect(init.headers.has("LinkedIn-Version")).toBe(false);
+      expect(init.headers.has("X-Restli-Protocol-Version")).toBe(false);
+    });
+
+    it("returns the raw Response", async () => {
+      const response = new Response(null, {
+        status: 200,
+        headers: { ETag: '"etag-456"' },
+      });
+      fetchSpy.mockResolvedValueOnce(response);
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      const result = await client.uploadBinary("https://upload.example.com/chunk/1", Buffer.from("data"));
+
+      expect(result.headers.get("ETag")).toBe('"etag-456"');
+    });
+
+    it("throws LinkedInApiError on non-OK response", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ error: "bad request" }, 400));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.uploadBinary("https://upload.example.com/chunk/1", Buffer.from("data"))).rejects.toThrow(
+        LinkedInApiError,
+      );
+    });
+  });
 });
