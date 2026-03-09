@@ -70,6 +70,42 @@ describe("post create", () => {
     );
   });
 
+  it("creates a post with shorthand --text option", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "--text", "Hello from text option"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        text: "Hello from text option",
+      }),
+    );
+  });
+
+  it("--text takes precedence over positional argument on post shorthand", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "positional", "--text", "from option"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        text: "from option",
+      }),
+    );
+  });
+
+  it("uses CONNECTIONS visibility on post shorthand", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "--text", "Private", "--visibility", "CONNECTIONS"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        visibility: "CONNECTIONS",
+      }),
+    );
+  });
+
   it("uses CONNECTIONS visibility when specified", async () => {
     const program = createProgram();
     await program.parseAsync([

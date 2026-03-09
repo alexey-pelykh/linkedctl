@@ -17,6 +17,7 @@ export function createProgram(version?: string): Command {
   if (version !== undefined) {
     program.version(version);
   }
+  program.enablePositionalOptions();
   program.option("--profile <name>", "profile to use from config file");
   program.option("--no-color", "disable color output");
 
