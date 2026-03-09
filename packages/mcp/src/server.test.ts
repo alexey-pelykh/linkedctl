@@ -1897,6 +1897,28 @@ describe("createMcpServer", () => {
       ]);
       expect(result.isError).toBe(true);
     });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(createReaction).mockRejectedValue(new Error("Server error"));
+
+      const result = await client.callTool({
+        name: "reaction_create",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
+    });
   });
 
   describe("reaction_list", () => {
@@ -1959,6 +1981,55 @@ describe("createMcpServer", () => {
 
       expect(result.content).toEqual([{ type: "text", text: "No reactions found" }]);
     });
+
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listReactions).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await client.callTool({
+        name: "reaction_list",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listReactions).mockRejectedValue(new Error("Server error"));
+
+      const result = await client.callTool({
+        name: "reaction_list",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
+    });
   });
 
   describe("reaction_delete", () => {
@@ -2017,6 +2088,29 @@ describe("createMcpServer", () => {
         },
       ]);
       expect(result.isError).toBe(true);
+    });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(deleteReaction).mockRejectedValue(new Error("Server error"));
+
+      const result = await client.callTool({
+        name: "reaction_delete",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
     });
   });
 });
