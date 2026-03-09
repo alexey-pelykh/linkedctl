@@ -5,3 +5,36 @@
  * Supported visibility settings for a LinkedIn post.
  */
 export type PostVisibility = "PUBLIC" | "CONNECTIONS";
+
+/**
+ * A single media attachment (image, video, or document).
+ */
+export interface MediaContent {
+  /** Media asset URN (e.g. `urn:li:image:...`, `urn:li:video:...`, `urn:li:document:...`). */
+  id: string;
+}
+
+/**
+ * An article link attachment.
+ */
+export interface ArticleContent {
+  /** The article URL. */
+  source: string;
+  /** Optional article title. */
+  title?: string | undefined;
+  /** Optional article description. */
+  description?: string | undefined;
+}
+
+/**
+ * A multi-image attachment.
+ */
+export interface MultiImageContent {
+  /** Array of image URNs (minimum 2). */
+  images: Array<{ id: string }>;
+}
+
+/**
+ * Content attachment for a LinkedIn post.
+ */
+export type PostContent = { media: MediaContent } | { article: ArticleContent } | { multiImage: MultiImageContent };

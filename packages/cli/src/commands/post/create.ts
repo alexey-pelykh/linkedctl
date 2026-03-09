@@ -4,8 +4,8 @@
 import { readFile } from "node:fs/promises";
 
 import { Command, InvalidArgumentError, Option } from "commander";
-import { resolveConfig, LinkedInClient, getCurrentPersonUrn, createTextPost, LinkedInApiError } from "@linkedctl/core";
-import type { PostVisibility } from "@linkedctl/core";
+import { resolveConfig, LinkedInClient, getCurrentPersonUrn, createPost, LinkedInApiError } from "@linkedctl/core";
+import type { PostVisibility, PostContent } from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
 import type { OutputFormat } from "../../output/index.js";
 import { readStdin } from "./stdin.js";
@@ -14,6 +14,11 @@ interface CreateOpts {
   text?: string | undefined;
   textFile?: string | undefined;
   visibility?: string | undefined;
+  image?: string | undefined;
+  video?: string | undefined;
+  document?: string | undefined;
+  articleUrl?: string | undefined;
+  images?: string | undefined;
   format?: string | undefined;
 }
 
@@ -56,10 +61,45 @@ async function resolveText(
 }
 
 /**
- * Shared action handler for creating a text post.
+ * Resolve media content from mutually exclusive CLI options.
+ */
+function resolveContent(opts: CreateOpts): PostContent | undefined {
+  const mediaFlags = [opts.image, opts.video, opts.document, opts.articleUrl, opts.images].filter(
+    (v) => v !== undefined,
+  );
+
+  if (mediaFlags.length > 1) {
+    throw new Error("Only one media option may be specified: --image, --video, --document, --article-url, or --images");
+  }
+
+  if (opts.image !== undefined) {
+    return { media: { id: opts.image } };
+  }
+  if (opts.video !== undefined) {
+    return { media: { id: opts.video } };
+  }
+  if (opts.document !== undefined) {
+    return { media: { id: opts.document } };
+  }
+  if (opts.articleUrl !== undefined) {
+    return { article: { source: opts.articleUrl } };
+  }
+  if (opts.images !== undefined) {
+    const ids = opts.images.split(",").map((s) => s.trim());
+    if (ids.length < 2) {
+      throw new Error("--images requires at least 2 comma-separated image URNs");
+    }
+    return { multiImage: { images: ids.map((id) => ({ id })) } };
+  }
+  return undefined;
+}
+
+/**
+ * Shared action handler for creating a post.
  */
 export async function createPostAction(textArg: string | undefined, opts: CreateOpts, cmd: Command): Promise<void> {
   const text = await resolveText(opts.text, opts.textFile, textArg);
+  const content = resolveContent(opts);
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined; json?: boolean | undefined }>();
 
   const { config } = await resolveConfig({
@@ -76,10 +116,11 @@ export async function createPostAction(textArg: string | undefined, opts: Create
   const visibility = (opts.visibility as PostVisibility | undefined) ?? "PUBLIC";
 
   try {
-    const postUrn = await createTextPost(client, {
+    const postUrn = await createPost(client, {
       author: authorUrn,
       text,
       visibility,
+      content,
     });
 
     const format = resolveFormat(opts.format as OutputFormat | undefined, process.stdout, globals.json === true);
@@ -93,9 +134,20 @@ export async function createPostAction(textArg: string | undefined, opts: Create
   }
 }
 
+/**
+ * Add media options shared between `post create` and `post` shorthand.
+ */
+export function addMediaOptions(cmd: Command): void {
+  cmd.option("--image <urn>", "attach an image by URN");
+  cmd.option("--video <urn>", "attach a video by URN");
+  cmd.option("--document <urn>", "attach a document by URN");
+  cmd.option("--article-url <url>", "attach an article link");
+  cmd.option("--images <urns>", "attach multiple images (comma-separated URNs, minimum 2)");
+}
+
 export function createCommand(): Command {
   const cmd = new Command("create");
-  cmd.description("Create a text post on LinkedIn (text: --text > --text-file > positional > stdin)");
+  cmd.description("Create a post on LinkedIn (text: --text > --text-file > positional > stdin)");
   cmd.argument("[text]", "text content of the post");
   cmd.option("--text <text>", "text content of the post (takes precedence over --text-file and positional argument)");
   cmd.option("--text-file <path>", "read post text from a UTF-8 file");
@@ -111,6 +163,7 @@ export function createCommand(): Command {
       })
       .default("PUBLIC"),
   );
+  addMediaOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.addHelpText(
@@ -119,6 +172,10 @@ export function createCommand(): Command {
 Examples:
   linkedctl post create "Hello from LinkedCtl!"
   linkedctl post create --text "Hello" --visibility CONNECTIONS
+  linkedctl post create --text "Check this out" --image urn:li:image:C5608AQ...
+  linkedctl post create --text "Watch this" --video urn:li:video:D5608AQ...
+  linkedctl post create --text "Read more" --article-url https://example.com/article
+  linkedctl post create --text "Gallery" --images urn:li:image:A1,urn:li:image:A2
   echo "Hello" | linkedctl post create`,
   );
 

@@ -12,7 +12,7 @@ import {
   LinkedInAuthError,
   getCurrentPersonUrn,
   getUserInfo,
-  createTextPost,
+  createPost,
   uploadDocument,
   DOCUMENT_EXTENSIONS,
   DOCUMENT_MAX_SIZE_BYTES,
@@ -22,6 +22,7 @@ import {
   clearOAuthTokens,
   revokeAccessToken,
 } from "@linkedctl/core";
+import type { PostContent } from "@linkedctl/core";
 
 /**
  * Create and configure the LinkedCtl MCP server with all tools registered.
@@ -83,14 +84,54 @@ export function createMcpServer(): McpServer {
     "post_create",
     {
       title: "Create Post",
-      description: "Create a text post on LinkedIn",
+      description:
+        "Create a post on LinkedIn with optional media attachment (image, video, document, article URL, or multi-image)",
       inputSchema: {
         text: z.string().describe("The text content of the post"),
         visibility: z.enum(["PUBLIC", "CONNECTIONS"]).optional().describe("Post visibility (defaults to PUBLIC)"),
+        image: z.string().optional().describe("Image URN to attach (e.g. urn:li:image:C5608AQ...)"),
+        video: z.string().optional().describe("Video URN to attach (e.g. urn:li:video:D5608AQ...)"),
+        document: z.string().optional().describe("Document URN to attach (e.g. urn:li:document:D123...)"),
+        article_url: z.string().optional().describe("Article URL to attach"),
+        images: z.array(z.string()).optional().describe("Array of image URNs for multi-image post (minimum 2)"),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
     async (args) => {
+      const mediaFlags = [args.image, args.video, args.document, args.article_url, args.images].filter(
+        (v) => v !== undefined,
+      );
+      if (mediaFlags.length > 1) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "Only one media option may be specified: image, video, document, article_url, or images",
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      let postContent: PostContent | undefined;
+      if (args.image !== undefined) {
+        postContent = { media: { id: args.image } };
+      } else if (args.video !== undefined) {
+        postContent = { media: { id: args.video } };
+      } else if (args.document !== undefined) {
+        postContent = { media: { id: args.document } };
+      } else if (args.article_url !== undefined) {
+        postContent = { article: { source: args.article_url } };
+      } else if (args.images !== undefined) {
+        if (args.images.length < 2) {
+          return {
+            content: [{ type: "text" as const, text: "Multi-image posts require at least 2 image URNs" }],
+            isError: true,
+          };
+        }
+        postContent = { multiImage: { images: args.images.map((id) => ({ id })) } };
+      }
+
       const { config } = await resolveConfig({
         profile: args.profile,
         requiredScopes: ["openid", "profile", "email", "w_member_social"],
@@ -103,10 +144,11 @@ export function createMcpServer(): McpServer {
       const authorUrn = await getCurrentPersonUrn(client);
       const visibility = args.visibility ?? "PUBLIC";
 
-      const postUrn = await createTextPost(client, {
+      const postUrn = await createPost(client, {
         author: authorUrn,
         text: args.text,
         visibility,
+        content: postContent,
       });
 
       return {
