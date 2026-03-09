@@ -76,6 +76,21 @@ describe("profile create", () => {
     expect(consoleSpy).toHaveBeenCalledWith('Profile "personal" created.');
   });
 
+  it("creates an empty profile without access token", async () => {
+    const cmd = createCommand();
+    await cmd.parseAsync(["work"], { from: "user" });
+
+    expect(loadConfigFileSpy).toHaveBeenCalledWith({ profile: "work" });
+    expect(vi.mocked(mkdir)).toHaveBeenCalledWith(join("/mock/home", ".linkedctl"), { recursive: true });
+    expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
+      join("/mock/home", ".linkedctl", "work.yaml"),
+      `api-version: "${core.DEFAULT_API_VERSION}"\n`,
+      { mode: 0o600 },
+    );
+    expect(saveOAuthTokensSpy).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith('Profile "work" created.');
+  });
+
   it("throws when profile already exists", async () => {
     loadConfigFileSpy.mockResolvedValue({
       raw: { "api-version": "202601" },
