@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { authCommand } from "./commands/auth/index.js";
+import { commentCommand } from "./commands/comment/index.js";
 import { completionCommand } from "./commands/completion.js";
 import { mediaCommand } from "./commands/media/index.js";
 import { postCommand } from "./commands/post/index.js";
@@ -34,6 +35,7 @@ export function createProgram(version?: string): Command {
   });
 
   program.addCommand(authCommand());
+  program.addCommand(commentCommand());
   program.addCommand(completionCommand(program));
   program.addCommand(mediaCommand());
   program.addCommand(postCommand());
