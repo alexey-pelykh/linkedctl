@@ -52,7 +52,14 @@ export type { UploadImageOptions } from "./media/media-service.js";
 export { SUPPORTED_IMAGE_TYPES } from "./media/types.js";
 export { createTextPost, createPost } from "./posts/posts-service.js";
 export type { CreateTextPostOptions, CreatePostOptions } from "./posts/posts-service.js";
-export type { PostVisibility, PostContent, MediaContent, ArticleContent, MultiImageContent } from "./posts/types.js";
+export type {
+  PostVisibility,
+  PostLifecycleState,
+  PostContent,
+  MediaContent,
+  ArticleContent,
+  MultiImageContent,
+} from "./posts/types.js";
 export { initializeVideoUpload, uploadVideoChunk, finalizeVideoUpload, uploadVideo } from "./video/video-service.js";
 export type {
   InitializeVideoUploadRequest,

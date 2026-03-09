@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import type { LinkedInClient } from "../http/linkedin-client.js";
-import type { PostContent, PostVisibility } from "./types.js";
+import type { PostContent, PostLifecycleState, PostVisibility } from "./types.js";
 
 /**
  * Options for creating a text-only LinkedIn post.
@@ -14,6 +14,8 @@ export interface CreateTextPostOptions {
   text: string;
   /** Post visibility. Defaults to `"PUBLIC"`. */
   visibility?: PostVisibility | undefined;
+  /** Post lifecycle state. Defaults to `"PUBLISHED"`. */
+  lifecycleState?: PostLifecycleState | undefined;
 }
 
 /**
@@ -28,6 +30,8 @@ export interface CreatePostOptions {
   visibility?: PostVisibility | undefined;
   /** Optional media content attachment. */
   content?: PostContent | undefined;
+  /** Post lifecycle state. Defaults to `"PUBLISHED"`. */
+  lifecycleState?: PostLifecycleState | undefined;
 }
 
 /**
@@ -50,7 +54,7 @@ export async function createPost(client: LinkedInClient, options: CreatePostOpti
       targetEntities: [],
       thirdPartyDistributionChannels: [],
     },
-    lifecycleState: "PUBLISHED",
+    lifecycleState: options.lifecycleState ?? "PUBLISHED",
     isReshareDisabledByAuthor: false,
   };
 

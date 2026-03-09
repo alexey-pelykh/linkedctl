@@ -7,6 +7,11 @@
 export type PostVisibility = "PUBLIC" | "CONNECTIONS";
 
 /**
+ * Lifecycle state of a LinkedIn post.
+ */
+export type PostLifecycleState = "PUBLISHED" | "DRAFT";
+
+/**
  * A single media attachment (image, video, or document).
  */
 export interface MediaContent {

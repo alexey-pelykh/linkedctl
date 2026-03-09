@@ -25,7 +25,7 @@ import {
   clearOAuthTokens,
   revokeAccessToken,
 } from "@linkedctl/core";
-import type { PostContent } from "@linkedctl/core";
+import type { PostContent, PostLifecycleState } from "@linkedctl/core";
 
 /**
  * Create and configure the LinkedCtl MCP server with all tools registered.
@@ -92,6 +92,7 @@ export function createMcpServer(): McpServer {
       inputSchema: {
         text: z.string().describe("The text content of the post"),
         visibility: z.enum(["PUBLIC", "CONNECTIONS"]).optional().describe("Post visibility (defaults to PUBLIC)"),
+        draft: z.boolean().optional().describe("Save as draft instead of publishing (defaults to false)"),
         image: z.string().optional().describe("Image URN to attach (e.g. urn:li:image:C5608AQ...)"),
         video: z.string().optional().describe("Video URN to attach (e.g. urn:li:video:D5608AQ...)"),
         document: z.string().optional().describe("Document URN to attach (e.g. urn:li:document:D123...)"),
@@ -248,12 +249,14 @@ export function createMcpServer(): McpServer {
       }
 
       const visibility = args.visibility ?? "PUBLIC";
+      const lifecycleState: PostLifecycleState = args.draft === true ? "DRAFT" : "PUBLISHED";
 
       const postUrn = await createPost(client, {
         author: authorUrn,
         text: args.text,
         visibility,
         content: postContent,
+        lifecycleState,
       });
 
       return {

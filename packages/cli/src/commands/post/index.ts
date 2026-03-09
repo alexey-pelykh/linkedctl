@@ -25,6 +25,7 @@ export function postCommand(): Command {
       })
       .default("PUBLIC"),
   );
+  cmd.option("--draft", "save post as draft instead of publishing");
   addMediaOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
@@ -35,6 +36,7 @@ Examples:
   linkedctl post "Hello from LinkedCtl!"
   linkedctl post --text "Hello" --visibility CONNECTIONS
   linkedctl post --text "Check this out" --image urn:li:image:C5608AQ...
+  linkedctl post --draft --text "Work in progress"
   echo "Hello" | linkedctl post`,
   );
 

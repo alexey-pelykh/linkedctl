@@ -65,6 +65,29 @@ describe("createTextPost", () => {
     const call = vi.mocked(client.create).mock.calls[0];
     expect(call?.[1]).toHaveProperty("visibility", "CONNECTIONS");
   });
+
+  it("defaults lifecycleState to PUBLISHED", async () => {
+    const client = mockClient("urn:li:share:102");
+    await createTextPost(client, {
+      author: "urn:li:person:abc",
+      text: "Default state",
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("lifecycleState", "PUBLISHED");
+  });
+
+  it("uses DRAFT lifecycleState when specified", async () => {
+    const client = mockClient("urn:li:share:103");
+    await createTextPost(client, {
+      author: "urn:li:person:abc",
+      text: "Draft post",
+      lifecycleState: "DRAFT",
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("lifecycleState", "DRAFT");
+  });
 });
 
 describe("createPost", () => {
@@ -199,6 +222,43 @@ describe("createPost", () => {
 
     const call = vi.mocked(client.create).mock.calls[0];
     expect(call?.[1]).toHaveProperty("visibility", "CONNECTIONS");
+    expect(call?.[1]).toHaveProperty("content", { media: { id: "urn:li:image:X" } });
+  });
+
+  it("defaults lifecycleState to PUBLISHED", async () => {
+    const client = mockClient("urn:li:share:307");
+    await createPost(client, {
+      author: "urn:li:person:abc",
+      text: "Default state",
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("lifecycleState", "PUBLISHED");
+  });
+
+  it("uses DRAFT lifecycleState when specified", async () => {
+    const client = mockClient("urn:li:share:308");
+    await createPost(client, {
+      author: "urn:li:person:abc",
+      text: "Draft post",
+      lifecycleState: "DRAFT",
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("lifecycleState", "DRAFT");
+  });
+
+  it("uses DRAFT lifecycleState with content", async () => {
+    const client = mockClient("urn:li:share:309");
+    await createPost(client, {
+      author: "urn:li:person:abc",
+      text: "Draft with image",
+      content: { media: { id: "urn:li:image:X" } },
+      lifecycleState: "DRAFT",
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("lifecycleState", "DRAFT");
     expect(call?.[1]).toHaveProperty("content", { media: { id: "urn:li:image:X" } });
   });
 });
