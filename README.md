@@ -1,3 +1,5 @@
+![LinkedCtl: The Complete CLI & MCP for LinkedIn](https://raw.githubusercontent.com/linkedctl/.github/main/profile/assets/social-preview.png)
+
 # LinkedCtl
 
 [![CI](https://img.shields.io/github/check-runs/alexey-pelykh/linkedctl/main)](https://github.com/alexey-pelykh/linkedctl/actions/workflows/ci.yml)
