@@ -213,6 +213,7 @@ describe("auth setup", () => {
       expect(saveOAuthPkceSpy).toHaveBeenCalledWith(true, undefined);
       const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
       expect(output).toContain("PKCE: enabled");
+      expect(output).toContain("If login fails, re-run setup and answer No");
     });
   });
 
@@ -222,6 +223,8 @@ describe("auth setup", () => {
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
       expect(saveOAuthPkceSpy).toHaveBeenCalledWith(false, undefined);
+      const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+      expect(output).not.toContain("If login fails, re-run setup and answer No");
     });
   });
 
