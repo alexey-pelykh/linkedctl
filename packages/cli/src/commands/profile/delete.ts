@@ -6,16 +6,20 @@ import { homedir } from "node:os";
 import { unlink } from "node:fs/promises";
 import { Command } from "commander";
 import { isValidProfileName, CONFIG_DIR } from "@linkedctl/core";
+import { confirmOrAbort } from "../../confirm.js";
 
 export function deleteCommand(): Command {
   const cmd = new Command("delete");
   cmd.description("Delete a profile");
   cmd.argument("<name>", "profile name");
+  cmd.option("-f, --force", "skip confirmation prompt");
 
-  cmd.action(async (name: string) => {
+  cmd.action(async (name: string, opts: { force?: true }) => {
     if (!isValidProfileName(name)) {
       throw new Error(`Invalid profile name "${name}". Names must not contain path separators or be empty.`);
     }
+
+    await confirmOrAbort(`Delete profile "${name}"?`, opts.force === true);
 
     const profilePath = join(homedir(), CONFIG_DIR, `${name}.yaml`);
 

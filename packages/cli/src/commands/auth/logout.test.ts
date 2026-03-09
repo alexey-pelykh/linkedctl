@@ -3,6 +3,7 @@
 
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import * as core from "@linkedctl/core";
+import * as readlinePromises from "node:readline/promises";
 import { logoutCommand } from "./logout.js";
 
 vi.mock("@linkedctl/core", async (importOriginal) => {
@@ -10,16 +11,37 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
   return { ...actual };
 });
 
+vi.mock("node:readline/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof readlinePromises>();
+  return { ...actual };
+});
+
+function mockReadline(answer: string) {
+  const closeFn = vi.fn();
+
+  vi.spyOn(readlinePromises, "createInterface").mockReturnValue({
+    question: vi.fn().mockResolvedValue(answer),
+    close: closeFn,
+  } as never);
+
+  return { closeFn };
+}
+
 describe("auth logout", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let clearOAuthTokensSpy: ReturnType<typeof vi.spyOn>;
+  let originalIsTTY: boolean | undefined;
 
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     clearOAuthTokensSpy = vi.spyOn(core, "clearOAuthTokens").mockResolvedValue(undefined);
+    originalIsTTY = process.stdin.isTTY;
+    // Default to non-TTY so existing tests don't need prompts
+    Object.defineProperty(process.stdin, "isTTY", { value: undefined, writable: true });
   });
 
   afterEach(() => {
+    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, writable: true });
     vi.restoreAllMocks();
   });
 
@@ -57,5 +79,76 @@ describe("auth logout", () => {
 
     const cmd = logoutCommand();
     await expect(cmd.parseAsync([], { from: "user" })).rejects.toThrow(/No OAuth credentials configured/);
+  });
+
+  it("prompts for confirmation in TTY mode", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    mockReadline("y");
+
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: { "access-token": "secret-token" },
+        "api-version": "202601",
+      },
+      path: "/some/path.yaml",
+    });
+
+    const cmd = logoutCommand();
+    await cmd.parseAsync([], { from: "user" });
+
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
+    expect(consoleSpy).toHaveBeenCalledWith('Credentials cleared for profile "default".');
+  });
+
+  it("aborts when user declines confirmation", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    mockReadline("n");
+
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: { "access-token": "secret-token" },
+        "api-version": "202601",
+      },
+      path: "/some/path.yaml",
+    });
+
+    const cmd = logoutCommand();
+    await expect(cmd.parseAsync([], { from: "user" })).rejects.toThrow("Aborted.");
+    expect(clearOAuthTokensSpy).not.toHaveBeenCalled();
+  });
+
+  it("skips confirmation with --force flag", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: { "access-token": "secret-token" },
+        "api-version": "202601",
+      },
+      path: "/some/path.yaml",
+    });
+
+    const cmd = logoutCommand();
+    await cmd.parseAsync(["--force"], { from: "user" });
+
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
+    expect(consoleSpy).toHaveBeenCalledWith('Credentials cleared for profile "default".');
+  });
+
+  it("skips confirmation in non-TTY mode", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: undefined, writable: true });
+
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: { "access-token": "secret-token" },
+        "api-version": "202601",
+      },
+      path: "/some/path.yaml",
+    });
+
+    const cmd = logoutCommand();
+    await cmd.parseAsync([], { from: "user" });
+
+    expect(clearOAuthTokensSpy).toHaveBeenCalledWith({ profile: undefined });
   });
 });
