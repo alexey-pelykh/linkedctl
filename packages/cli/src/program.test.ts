@@ -50,4 +50,21 @@ describe("createProgram", () => {
     expect(error).toBeInstanceOf(CommanderError);
     expect((error as CommanderError).exitCode).toBe(0);
   });
+
+  it("registers --json global option", () => {
+    const program = createProgram();
+    let helpOutput = "";
+    program.configureOutput({ writeOut: (str: string) => (helpOutput += str) });
+    program.outputHelp();
+    expect(helpOutput).toContain("--json");
+  });
+
+  it("registers --quiet / -q global option", () => {
+    const program = createProgram();
+    let helpOutput = "";
+    program.configureOutput({ writeOut: (str: string) => (helpOutput += str) });
+    program.outputHelp();
+    expect(helpOutput).toContain("--quiet");
+    expect(helpOutput).toContain("-q");
+  });
 });

@@ -19,7 +19,17 @@ export function createProgram(version?: string): Command {
   }
   program.enablePositionalOptions();
   program.option("--profile <name>", "profile to use from config file");
+  program.option("--json", "force JSON output on all data-producing commands");
+  program.option("-q, --quiet", "suppress informational output");
   program.option("--no-color", "disable color output");
+
+  program.hook("preAction", (thisCommand: Command) => {
+    const opts = thisCommand.optsWithGlobals<{ quiet?: boolean }>();
+    if (opts.quiet === true) {
+      console.error = () => {};
+      console.warn = () => {};
+    }
+  });
 
   program.addCommand(authCommand());
   program.addCommand(completionCommand(program));

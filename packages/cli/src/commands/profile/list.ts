@@ -81,7 +81,7 @@ export function listCommand(): Command {
   cmd.description("List all profiles");
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
-  cmd.action(async (opts: Record<string, unknown>) => {
+  cmd.action(async (opts: Record<string, unknown>, actionCmd: Command) => {
     const profileDir = join(homedir(), CONFIG_DIR);
     let entries: string[];
     try {
@@ -103,7 +103,8 @@ export function listCommand(): Command {
 
     const profiles = await Promise.all(names.map((name) => getProfileStatus(name)));
 
-    const format = resolveFormat(opts["format"] as OutputFormat | undefined, process.stdout);
+    const globalJson = actionCmd.optsWithGlobals<{ json?: boolean }>().json === true;
+    const format = resolveFormat(opts["format"] as OutputFormat | undefined, process.stdout, globalJson);
 
     const data =
       format === "json" ? profiles : profiles.map((p) => ({ name: p.name, status: p.status, expires: p.expires }));

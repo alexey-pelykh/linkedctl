@@ -35,4 +35,16 @@ describe("resolveFormat", () => {
     expect(resolveFormat(undefined, { isTTY: true })).toBe("table");
     expect(resolveFormat(undefined, { isTTY: false })).toBe("json");
   });
+
+  it("returns 'json' when globalJson is true and no explicit format", () => {
+    expect(resolveFormat(undefined, { isTTY: true }, true)).toBe("json");
+  });
+
+  it("returns explicit format even when globalJson is true", () => {
+    expect(resolveFormat("table", { isTTY: false }, true)).toBe("table");
+  });
+
+  it("falls back to TTY detection when globalJson is false", () => {
+    expect(resolveFormat(undefined, { isTTY: true }, false)).toBe("table");
+  });
 });

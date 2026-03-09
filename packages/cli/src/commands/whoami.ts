@@ -32,7 +32,8 @@ Examples:
 
     const userInfo = await getUserInfo(client);
 
-    const format = resolveFormat(opts["format"] as OutputFormat | undefined, process.stdout);
+    const globalJson = rootOpts["json"] === true;
+    const format = resolveFormat(opts["format"] as OutputFormat | undefined, process.stdout, globalJson);
 
     const data = {
       name: userInfo.name,

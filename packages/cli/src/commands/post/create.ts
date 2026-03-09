@@ -60,7 +60,7 @@ async function resolveText(
  */
 export async function createPostAction(textArg: string | undefined, opts: CreateOpts, cmd: Command): Promise<void> {
   const text = await resolveText(opts.text, opts.textFile, textArg);
-  const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
+  const globals = cmd.optsWithGlobals<{ profile?: string | undefined; json?: boolean | undefined }>();
 
   const { config } = await resolveConfig({
     profile: globals.profile,
@@ -82,7 +82,7 @@ export async function createPostAction(textArg: string | undefined, opts: Create
       visibility,
     });
 
-    const format = resolveFormat(opts.format as OutputFormat | undefined, process.stdout);
+    const format = resolveFormat(opts.format as OutputFormat | undefined, process.stdout, globals.json === true);
     const output = formatOutput({ urn: postUrn }, format);
     console.log(output);
   } catch (error) {
