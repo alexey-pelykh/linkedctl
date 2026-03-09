@@ -466,4 +466,40 @@ describe("LinkedInClient", () => {
       await expect(client.create("/rest/posts", {})).rejects.toThrow(LinkedInAuthError);
     });
   });
+
+  describe("upload", () => {
+    it("sends PUT with binary body and content type to absolute URL", async () => {
+      fetchSpy.mockResolvedValueOnce(emptyResponse(201));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      const data = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+      await client.upload("https://www.linkedin.com/dms-uploads/abc", data, "image/jpeg");
+
+      const [url, init] = fetchSpy.mock.calls[0];
+      expect(url).toBe("https://www.linkedin.com/dms-uploads/abc");
+      expect(init.method).toBe("PUT");
+      expect(init.body).toBe(data);
+      expect(init.headers.get("Content-Type")).toBe("image/jpeg");
+    });
+
+    it("sends LinkedIn auth headers on upload", async () => {
+      fetchSpy.mockResolvedValueOnce(emptyResponse(201));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+      await client.upload("https://www.linkedin.com/dms-uploads/abc", new Uint8Array(), "image/png");
+
+      const [, init] = fetchSpy.mock.calls[0];
+      expect(init.headers.get("Authorization")).toBe("Bearer test-token");
+    });
+
+    it("throws on upload failure", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ message: "Upload failed" }, 400));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(
+        client.upload("https://www.linkedin.com/dms-uploads/abc", new Uint8Array(), "image/jpeg"),
+      ).rejects.toThrow(LinkedInApiError);
+    });
+  });
 });

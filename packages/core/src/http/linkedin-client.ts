@@ -75,11 +75,25 @@ export class LinkedInClient {
   }
 
   /**
+   * Upload binary data via PUT to an absolute URL.
+   *
+   * Used for LinkedIn media uploads where the upload URL is provided by
+   * the initialize-upload response and is already fully qualified.
+   */
+  async upload(url: string, data: Uint8Array, contentType: string): Promise<void> {
+    await this.sendRequest(url, {
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body: data,
+    });
+  }
+
+  /**
    * Execute an HTTP request with retry logic and error handling.
    * Returns the raw successful Response.
    */
-  private async sendRequest(path: string, init?: RequestInit): Promise<Response> {
-    const url = `${this.baseUrl}${path}`;
+  private async sendRequest(urlOrPath: string, init?: RequestInit): Promise<Response> {
+    const url = urlOrPath.startsWith("http") ? urlOrPath : `${this.baseUrl}${urlOrPath}`;
     const headers = this.buildHeaders(init?.headers);
 
     let lastError: LinkedInRateLimitError | undefined;
