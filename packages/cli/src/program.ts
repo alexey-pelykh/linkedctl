@@ -7,6 +7,7 @@ import { completionCommand } from "./commands/completion.js";
 import { mediaCommand } from "./commands/media/index.js";
 import { postCommand } from "./commands/post/index.js";
 import { profileCommand } from "./commands/profile/index.js";
+import { reactionCommand } from "./commands/reaction/index.js";
 import { whoamiCommand } from "./commands/whoami.js";
 
 /**
@@ -37,6 +38,7 @@ export function createProgram(version?: string): Command {
   program.addCommand(mediaCommand());
   program.addCommand(postCommand());
   program.addCommand(profileCommand());
+  program.addCommand(reactionCommand());
   program.addCommand(whoamiCommand());
 
   program.exitOverride();

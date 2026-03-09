@@ -28,6 +28,9 @@ vi.mock("@linkedctl/core", () => ({
   uploadImage: vi.fn(),
   uploadVideo: vi.fn(),
   uploadDocument: vi.fn(),
+  createReaction: vi.fn(),
+  listReactions: vi.fn(),
+  deleteReaction: vi.fn(),
   SUPPORTED_IMAGE_TYPES: new Map([
     [".jpg", "image/jpeg"],
     [".jpeg", "image/jpeg"],
@@ -36,6 +39,7 @@ vi.mock("@linkedctl/core", () => ({
   ]),
   DOCUMENT_EXTENSIONS: [".pdf", ".docx", ".pptx", ".doc", ".ppt"],
   DOCUMENT_MAX_SIZE_BYTES: 100 * 1024 * 1024,
+  REACTION_TYPES: ["LIKE", "PRAISE", "EMPATHY", "INTEREST", "APPRECIATION", "ENTERTAINMENT"],
   loadConfigFile: vi.fn(),
   validateConfig: vi.fn(),
   getTokenExpiry: vi.fn(),
@@ -54,6 +58,9 @@ import {
   uploadImage,
   uploadVideo,
   uploadDocument,
+  createReaction,
+  listReactions,
+  deleteReaction,
   loadConfigFile,
   validateConfig,
   getTokenExpiry,
@@ -93,6 +100,9 @@ describe("createMcpServer", () => {
     expect(toolNames).toContain("whoami");
     expect(toolNames).toContain("post_create");
     expect(toolNames).toContain("document_upload");
+    expect(toolNames).toContain("reaction_create");
+    expect(toolNames).toContain("reaction_list");
+    expect(toolNames).toContain("reaction_delete");
     expect(toolNames).toContain("auth_status");
     expect(toolNames).toContain("auth_revoke");
   });
@@ -1191,6 +1201,215 @@ describe("createMcpServer", () => {
           text: expect.stringContaining("No complete credentials for server-side revocation"),
         },
       ]);
+    });
+  });
+
+  describe("reaction_create", () => {
+    it("creates a LIKE reaction by default and returns the URN", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(createReaction).mockResolvedValue("urn:li:reaction:r123");
+
+      const result = await client.callTool({
+        name: "reaction_create",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      expect(createReaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          entity: "urn:li:share:abc123",
+          reactionType: "LIKE",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Reaction created: urn:li:reaction:r123" }]);
+    });
+
+    it("creates a reaction with specified type", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(createReaction).mockResolvedValue("urn:li:reaction:r456");
+
+      const result = await client.callTool({
+        name: "reaction_create",
+        arguments: { entity_urn: "urn:li:share:abc123", reaction_type: "PRAISE" },
+      });
+
+      expect(createReaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          reactionType: "PRAISE",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Reaction created: urn:li:reaction:r456" }]);
+    });
+
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(createReaction).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await client.callTool({
+        name: "reaction_create",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("reaction_list", () => {
+    it("lists reactions on a post", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listReactions).mockResolvedValue([
+        {
+          actor: "urn:li:person:user1",
+          entity: "urn:li:share:abc123",
+          reactionType: "LIKE",
+          createdAt: 1700000000000,
+        },
+      ]);
+
+      const result = await client.callTool({
+        name: "reaction_list",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(listReactions).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          entity: "urn:li:share:abc123",
+        }),
+      );
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("LIKE by urn:li:person:user1"),
+        },
+      ]);
+    });
+
+    it("returns message when no reactions found", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listReactions).mockResolvedValue([]);
+
+      const result = await client.callTool({
+        name: "reaction_list",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(result.content).toEqual([{ type: "text", text: "No reactions found" }]);
+    });
+  });
+
+  describe("reaction_delete", () => {
+    it("deletes the user's reaction from a post", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(deleteReaction).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "reaction_delete",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(deleteReaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          entity: "urn:li:share:abc123",
+          actor: "urn:li:person:abc123",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Reaction deleted" }]);
+    });
+
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(deleteReaction).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await client.callTool({
+        name: "reaction_delete",
+        arguments: { entity_urn: "urn:li:share:abc123" },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
     });
   });
 });
