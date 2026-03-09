@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command } from "commander";
+import { uploadDocumentCommand } from "./upload-document.js";
 import { uploadImageCommand } from "./upload-image.js";
 import { uploadVideoCommand } from "./upload-video.js";
 
@@ -9,6 +10,7 @@ export function mediaCommand(): Command {
   const cmd = new Command("media");
   cmd.description("Manage LinkedIn media assets");
 
+  cmd.addCommand(uploadDocumentCommand());
   cmd.addCommand(uploadImageCommand());
   cmd.addCommand(uploadVideoCommand());
 
