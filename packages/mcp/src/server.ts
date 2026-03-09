@@ -17,6 +17,10 @@ import {
   listComments,
   getComment,
   deleteComment,
+  getPost,
+  listPosts,
+  updatePost,
+  deletePost,
   uploadImage,
   uploadVideo,
   uploadDocument,
@@ -747,6 +751,121 @@ export function createMcpServer(): McpServer {
 
       return {
         content: [{ type: "text" as const, text: "Comment deleted." }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "post_get",
+    {
+      title: "Get Post",
+      description: "Fetch a single LinkedIn post by URN",
+      inputSchema: {
+        urn: z.string().describe("Post URN (e.g. urn:li:share:123)"),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      const post = await getPost(client, args.urn);
+
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(post, null, 2) }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "post_list",
+    {
+      title: "List Posts",
+      description: "List the authenticated user's LinkedIn posts with pagination",
+      inputSchema: {
+        count: z.number().optional().describe("Number of posts to return (default 10, max 100)"),
+        start: z.number().optional().describe("Starting index for pagination (default 0)"),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      const authorUrn = await getCurrentPersonUrn(client);
+      const response = await listPosts(client, {
+        author: authorUrn,
+        count: args.count,
+        start: args.start,
+      });
+
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "post_update",
+    {
+      title: "Update Post",
+      description: "Update the commentary text of an existing LinkedIn post",
+      inputSchema: {
+        urn: z.string().describe("Post URN (e.g. urn:li:share:123)"),
+        text: z.string().describe("New text content for the post"),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      await updatePost(client, args.urn, { text: args.text });
+
+      return {
+        content: [{ type: "text" as const, text: `Post updated: ${args.urn}` }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "post_delete",
+    {
+      title: "Delete Post",
+      description: "Delete a LinkedIn post by URN",
+      inputSchema: {
+        urn: z.string().describe("Post URN (e.g. urn:li:share:123)"),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      await deletePost(client, args.urn);
+
+      return {
+        content: [{ type: "text" as const, text: `Post deleted: ${args.urn}` }],
       };
     },
   );
