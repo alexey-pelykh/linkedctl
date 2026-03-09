@@ -1,0 +1,27 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - accessToken
+    properties:
+      accessToken:
+        type: string
+        description: LinkedIn OAuth2 access token
+      clientId:
+        type: string
+        description: LinkedIn OAuth2 client ID (optional, for token refresh)
+      clientSecret:
+        type: string
+        description: LinkedIn OAuth2 client secret (optional, for token refresh)
+  commandFunction: |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', 'linkedctl@latest', 'mcp'],
+      env: {
+        LINKEDCTL_ACCESS_TOKEN: config.accessToken,
+        ...(config.clientId ? { LINKEDCTL_CLIENT_ID: config.clientId } : {}),
+        ...(config.clientSecret ? { LINKEDCTL_CLIENT_SECRET: config.clientSecret } : {})
+      }
+    })
