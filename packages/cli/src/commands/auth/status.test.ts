@@ -40,10 +40,12 @@ describe("auth status", () => {
     });
 
     const cmd = statusCommand();
-    await cmd.parseAsync([], { from: "user" });
+    await cmd.parseAsync(["--format", "table"], { from: "user" });
 
-    expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
-    expect(consoleSpy).toHaveBeenCalledWith("Status: not configured");
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(output).toContain("default");
+    expect(output).toContain("not configured");
     expect(consoleErrorSpy).toHaveBeenCalledWith('Run "linkedctl auth login" to set up authentication.');
   });
 
@@ -57,10 +59,12 @@ describe("auth status", () => {
     });
 
     const cmd = statusCommand();
-    await cmd.parseAsync([], { from: "user" });
+    await cmd.parseAsync(["--format", "table"], { from: "user" });
 
-    expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
-    expect(consoleSpy).toHaveBeenCalledWith("Status: not configured");
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(output).toContain("default");
+    expect(output).toContain("not configured");
     expect(consoleErrorSpy).toHaveBeenCalledWith('Run "linkedctl auth login" to set up authentication.');
   });
 
@@ -77,11 +81,12 @@ describe("auth status", () => {
     });
 
     const cmd = statusCommand();
-    await cmd.parseAsync([], { from: "user" });
+    await cmd.parseAsync(["--format", "table"], { from: "user" });
 
-    expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
-    expect(consoleSpy).toHaveBeenCalledWith("Status: authenticated");
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("remaining)"));
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(output).toContain("authenticated");
+    expect(output).toContain("remaining)");
   });
 
   it("shows expired status with guidance for expired JWT", async () => {
@@ -97,10 +102,11 @@ describe("auth status", () => {
     });
 
     const cmd = statusCommand();
-    await cmd.parseAsync([], { from: "user" });
+    await cmd.parseAsync(["--format", "table"], { from: "user" });
 
-    expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
-    expect(consoleSpy).toHaveBeenCalledWith("Status: expired");
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(output).toContain("expired");
     expect(consoleErrorSpy).toHaveBeenCalledWith('Run "linkedctl auth login" to re-authenticate.');
   });
 
@@ -114,10 +120,112 @@ describe("auth status", () => {
     });
 
     const cmd = statusCommand();
-    await cmd.parseAsync([], { from: "user" });
+    await cmd.parseAsync(["--format", "table"], { from: "user" });
 
-    expect(consoleSpy).toHaveBeenCalledWith("Profile: default");
-    expect(consoleSpy).toHaveBeenCalledWith("Status: authenticated");
-    expect(consoleSpy).toHaveBeenCalledWith("Expiry: unknown (token is not a JWT)");
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(output).toContain("authenticated");
+    expect(output).toContain("unknown (token is not a JWT)");
+  });
+
+  it("outputs JSON when --format json is specified for not configured", async () => {
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: undefined,
+      path: undefined,
+    });
+
+    const cmd = statusCommand();
+    await cmd.parseAsync(["--format", "json"], { from: "user" });
+
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(parsed).toEqual({
+      profile: "default",
+      status: "not configured",
+      expiresAt: null,
+      remainingSeconds: null,
+    });
+  });
+
+  it("outputs JSON when --format json is specified for valid JWT", async () => {
+    const futureExp = Math.floor(Date.now() / 1000) + 86400 * 3;
+    const token = buildJwt({ exp: futureExp, sub: "user" });
+
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: { "access-token": token },
+        "api-version": "202601",
+      },
+      path: "/some/path.yaml",
+    });
+
+    const cmd = statusCommand();
+    await cmd.parseAsync(["--format", "json"], { from: "user" });
+
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(parsed).toEqual({
+      profile: "default",
+      status: "authenticated",
+      expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) as unknown,
+      remainingSeconds: expect.any(Number) as unknown,
+    });
+    expect(parsed["remainingSeconds"]).toBeGreaterThan(0);
+  });
+
+  it("outputs JSON when --format json is specified for expired JWT", async () => {
+    const pastExp = Math.floor(Date.now() / 1000) - 3600;
+    const token = buildJwt({ exp: pastExp });
+
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: { "access-token": token },
+        "api-version": "202601",
+      },
+      path: "/some/path.yaml",
+    });
+
+    const cmd = statusCommand();
+    await cmd.parseAsync(["--format", "json"], { from: "user" });
+
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(parsed).toEqual({
+      profile: "default",
+      status: "expired",
+      expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) as unknown,
+      remainingSeconds: 0,
+    });
+  });
+
+  it("outputs JSON when --format json is specified for opaque token", async () => {
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: {
+        oauth: { "access-token": "AQVh7cKZopaque" },
+        "api-version": "202601",
+      },
+      path: "/some/path.yaml",
+    });
+
+    const cmd = statusCommand();
+    await cmd.parseAsync(["--format", "json"], { from: "user" });
+
+    expect(consoleSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(parsed).toEqual({
+      profile: "default",
+      status: "authenticated",
+      expiresAt: null,
+      remainingSeconds: null,
+    });
+  });
+
+  it("rejects invalid --format value", async () => {
+    const cmd = statusCommand();
+    cmd.exitOverride();
+
+    await expect(cmd.parseAsync(["--format", "xml"], { from: "user" })).rejects.toThrow(
+      /Allowed choices are json, table/,
+    );
   });
 });
