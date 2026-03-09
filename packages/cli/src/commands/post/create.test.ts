@@ -599,7 +599,7 @@ describe("post create", () => {
           "--video",
           "urn:li:video:Y",
         ]),
-      ).rejects.toThrow(/Only one media option/);
+      ).rejects.toThrow(/Only one content option/);
     });
 
     it("creates a post with --image on post shorthand", async () => {
@@ -849,7 +849,7 @@ describe("post create", () => {
           "--image",
           "urn:li:image:X",
         ]),
-      ).rejects.toThrow(/Only one media option/);
+      ).rejects.toThrow(/Only one content option/);
     });
 
     it("rejects combining --video-file with --document-file", async () => {
@@ -874,7 +874,7 @@ describe("post create", () => {
           "--document-file",
           docPath,
         ]),
-      ).rejects.toThrow(/Only one media option/);
+      ).rejects.toThrow(/Only one content option/);
     });
 
     it("uses --image-file on post shorthand", async () => {
@@ -890,6 +890,207 @@ describe("post create", () => {
         expect.objectContaining({
           text: "Shorthand upload",
           content: { media: { id: "urn:li:image:UPLOADED1" } },
+        }),
+      );
+    });
+  });
+
+  describe("poll options", () => {
+    it("creates a poll post with --poll and --option flags", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Vote now!",
+        "--poll",
+        "Favorite language?",
+        "--option",
+        "TypeScript",
+        "--option",
+        "Python",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Vote now!",
+          content: {
+            poll: {
+              question: "Favorite language?",
+              options: [{ text: "TypeScript" }, { text: "Python" }],
+              settings: { duration: "THREE_DAYS" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("creates a poll post with custom duration", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Vote!",
+        "--poll",
+        "Best framework?",
+        "--option",
+        "React",
+        "--option",
+        "Vue",
+        "--option",
+        "Angular",
+        "--poll-duration",
+        "ONE_WEEK",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: {
+            poll: {
+              question: "Best framework?",
+              options: [{ text: "React" }, { text: "Vue" }, { text: "Angular" }],
+              settings: { duration: "ONE_WEEK" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects --poll with fewer than 2 options", async () => {
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync([
+          "node",
+          "linkedctl",
+          "post",
+          "create",
+          "--text",
+          "Vote!",
+          "--poll",
+          "Question?",
+          "--option",
+          "Only one",
+        ]),
+      ).rejects.toThrow(/at least 2/);
+    });
+
+    it("rejects --poll with more than 4 options", async () => {
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync([
+          "node",
+          "linkedctl",
+          "post",
+          "create",
+          "--text",
+          "Vote!",
+          "--poll",
+          "Question?",
+          "--option",
+          "A",
+          "--option",
+          "B",
+          "--option",
+          "C",
+          "--option",
+          "D",
+          "--option",
+          "E",
+        ]),
+      ).rejects.toThrow(/at most 4/);
+    });
+
+    it("rejects combining --poll with --image", async () => {
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync([
+          "node",
+          "linkedctl",
+          "post",
+          "create",
+          "--text",
+          "Both",
+          "--poll",
+          "Question?",
+          "--option",
+          "A",
+          "--option",
+          "B",
+          "--image",
+          "urn:li:image:X",
+        ]),
+      ).rejects.toThrow(/Only one content option/);
+    });
+
+    it("creates a poll post on post shorthand", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "--text",
+        "Quick poll",
+        "--poll",
+        "Yes or no?",
+        "--option",
+        "Yes",
+        "--option",
+        "No",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Quick poll",
+          content: {
+            poll: {
+              question: "Yes or no?",
+              options: [{ text: "Yes" }, { text: "No" }],
+              settings: { duration: "THREE_DAYS" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("defaults poll duration to THREE_DAYS", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Poll",
+        "--poll",
+        "Q?",
+        "--option",
+        "A",
+        "--option",
+        "B",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: expect.objectContaining({
+            poll: expect.objectContaining({
+              settings: { duration: "THREE_DAYS" },
+            }),
+          }),
         }),
       );
     });

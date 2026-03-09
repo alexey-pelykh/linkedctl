@@ -40,6 +40,30 @@ export interface MultiImageContent {
 }
 
 /**
+ * Supported poll duration settings.
+ */
+export type PollDuration = "ONE_DAY" | "THREE_DAYS" | "ONE_WEEK" | "TWO_WEEKS";
+
+/**
+ * A poll attachment.
+ */
+export interface PollContent {
+  /** The poll question. */
+  question: string;
+  /** Poll answer options (minimum 2, maximum 4). */
+  options: Array<{ text: string }>;
+  /** Poll settings. */
+  settings: {
+    /** How long the poll stays open. Defaults to `"THREE_DAYS"`. */
+    duration: PollDuration;
+  };
+}
+
+/**
  * Content attachment for a LinkedIn post.
  */
-export type PostContent = { media: MediaContent } | { article: ArticleContent } | { multiImage: MultiImageContent };
+export type PostContent =
+  | { media: MediaContent }
+  | { article: ArticleContent }
+  | { multiImage: MultiImageContent }
+  | { poll: PollContent };

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command, InvalidArgumentError, Option } from "commander";
-import { addMediaOptions, createCommand, createPostAction } from "./create.js";
+import { addMediaOptions, addPollOptions, createCommand, createPostAction } from "./create.js";
 
 export function postCommand(): Command {
   const cmd = new Command("post");
@@ -27,6 +27,7 @@ export function postCommand(): Command {
   );
   cmd.option("--draft", "save post as draft instead of publishing");
   addMediaOptions(cmd);
+  addPollOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.addHelpText(
@@ -37,6 +38,7 @@ Examples:
   linkedctl post --text "Hello" --visibility CONNECTIONS
   linkedctl post --text "Check this out" --image urn:li:image:C5608AQ...
   linkedctl post --draft --text "Work in progress"
+  linkedctl post --text "Vote!" --poll "Favorite?" --option "A" --option "B"
   echo "Hello" | linkedctl post`,
   );
 

@@ -18,7 +18,7 @@ import {
   DOCUMENT_EXTENSIONS,
   DOCUMENT_MAX_SIZE_BYTES,
 } from "@linkedctl/core";
-import type { PostVisibility, PostLifecycleState, PostContent } from "@linkedctl/core";
+import type { PostVisibility, PostLifecycleState, PostContent, PollDuration } from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
 import type { OutputFormat } from "../../output/index.js";
 import { readStdin } from "./stdin.js";
@@ -37,6 +37,9 @@ interface CreateOpts {
   videoFile?: string | undefined;
   documentFile?: string | undefined;
   imageFiles?: string | undefined;
+  poll?: string | undefined;
+  option?: string[] | undefined;
+  pollDuration?: string | undefined;
   format?: string | undefined;
 }
 
@@ -81,10 +84,10 @@ async function resolveText(
 /**
  * Resolve media content from mutually exclusive CLI options (URN-based).
  *
- * Also validates mutual exclusivity against file-based options.
+ * Also validates mutual exclusivity against file-based and poll options.
  */
 function resolveContent(opts: CreateOpts): PostContent | undefined {
-  const mediaFlags = [
+  const contentFlags = [
     opts.image,
     opts.video,
     opts.document,
@@ -94,11 +97,12 @@ function resolveContent(opts: CreateOpts): PostContent | undefined {
     opts.videoFile,
     opts.documentFile,
     opts.imageFiles,
+    opts.poll,
   ].filter((v) => v !== undefined);
 
-  if (mediaFlags.length > 1) {
+  if (contentFlags.length > 1) {
     throw new Error(
-      "Only one media option may be specified: --image, --video, --document, --article-url, --images, --image-file, --video-file, --document-file, or --image-files",
+      "Only one content option may be specified: --image, --video, --document, --article-url, --images, --image-file, --video-file, --document-file, --image-files, or --poll",
     );
   }
 
@@ -120,6 +124,23 @@ function resolveContent(opts: CreateOpts): PostContent | undefined {
       throw new Error("--images requires at least 2 comma-separated image URNs");
     }
     return { multiImage: { images: ids.map((id) => ({ id })) } };
+  }
+  if (opts.poll !== undefined) {
+    const options = opts.option ?? [];
+    if (options.length < 2) {
+      throw new Error("--poll requires at least 2 --option values");
+    }
+    if (options.length > 4) {
+      throw new Error("--poll allows at most 4 --option values");
+    }
+    const duration = (opts.pollDuration as PollDuration | undefined) ?? "THREE_DAYS";
+    return {
+      poll: {
+        question: opts.poll,
+        options: options.map((text) => ({ text })),
+        settings: { duration },
+      },
+    };
   }
   return undefined;
 }
@@ -251,6 +272,23 @@ export function addMediaOptions(cmd: Command): void {
   cmd.option("--image-files <paths>", "upload multiple local image files and attach them (comma-separated, minimum 2)");
 }
 
+/**
+ * Add poll options shared between `post create` and `post` shorthand.
+ */
+export function addPollOptions(cmd: Command): void {
+  cmd.option("--poll <question>", "create a poll with the given question");
+  cmd.option("--option <text>", "add a poll answer option (repeat for each option, 2-4 required)", collectOption);
+  cmd.addOption(
+    new Option("--poll-duration <duration>", "poll duration (defaults to THREE_DAYS)")
+      .choices(["ONE_DAY", "THREE_DAYS", "ONE_WEEK", "TWO_WEEKS"])
+      .default("THREE_DAYS"),
+  );
+}
+
+function collectOption(value: string, previous: string[] | undefined): string[] {
+  return [...(previous ?? []), value];
+}
+
 export function createCommand(): Command {
   const cmd = new Command("create");
   cmd.description("Create a post on LinkedIn (text: --text > --text-file > positional > stdin)");
@@ -271,6 +309,7 @@ export function createCommand(): Command {
   );
   cmd.option("--draft", "save post as draft instead of publishing");
   addMediaOptions(cmd);
+  addPollOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.addHelpText(
@@ -288,6 +327,7 @@ Examples:
   linkedctl post create --text "Deck" --document-file deck.pdf
   linkedctl post create --text "Gallery" --image-files a.jpg,b.jpg
   linkedctl post create --draft --text "Work in progress"
+  linkedctl post create --text "Vote!" --poll "Favorite language?" --option "TypeScript" --option "Python"
   echo "Hello" | linkedctl post create`,
   );
 
