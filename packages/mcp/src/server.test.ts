@@ -1175,6 +1175,42 @@ describe("createMcpServer", () => {
         { type: "text", text: "Comment created: urn:li:comment:(urn:li:activity:100,200)" },
       ]);
     });
+
+    it("uses organization URN as actor when as_org is specified", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(createComment).mockResolvedValue("urn:li:comment:(urn:li:activity:100,300)");
+
+      const result = await client.callTool({
+        name: "comment_create",
+        arguments: {
+          post_urn: "urn:li:share:123",
+          text: "Official reply",
+          as_org: "99999",
+        },
+      });
+
+      expect(getCurrentPersonUrn).not.toHaveBeenCalled();
+      expect(createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          actor: "urn:li:organization:99999",
+          object: "urn:li:share:123",
+          message: "Official reply",
+        }),
+      );
+      expect(result.content).toEqual([
+        { type: "text", text: "Comment created: urn:li:comment:(urn:li:activity:100,300)" },
+      ]);
+    });
   });
 
   describe("comment_list", () => {
@@ -2045,6 +2081,35 @@ describe("createMcpServer", () => {
       expect(result.content).toEqual([{ type: "text", text: "Reaction created: urn:li:reaction:r456" }]);
     });
 
+    it("passes organization actor when as_org is specified", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(createReaction).mockResolvedValue("urn:li:reaction:r789");
+
+      const result = await client.callTool({
+        name: "reaction_create",
+        arguments: { entity_urn: "urn:li:share:abc123", as_org: "99999" },
+      });
+
+      expect(createReaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          entity: "urn:li:share:abc123",
+          reactionType: "LIKE",
+          actor: "urn:li:organization:99999",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Reaction created: urn:li:reaction:r789" }]);
+    });
+
     it("returns error with re-auth guidance for expired token", async () => {
       vi.mocked(resolveConfig).mockResolvedValue({
         config: {
@@ -2231,6 +2296,35 @@ describe("createMcpServer", () => {
         expect.objectContaining({
           entity: "urn:li:share:abc123",
           actor: "urn:li:person:abc123",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Reaction deleted" }]);
+    });
+
+    it("uses organization URN as actor when as_org is specified", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(deleteReaction).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "reaction_delete",
+        arguments: { entity_urn: "urn:li:share:abc123", as_org: "99999" },
+      });
+
+      expect(getCurrentPersonUrn).not.toHaveBeenCalled();
+      expect(deleteReaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          entity: "urn:li:share:abc123",
+          actor: "urn:li:organization:99999",
         }),
       );
       expect(result.content).toEqual([{ type: "text", text: "Reaction deleted" }]);

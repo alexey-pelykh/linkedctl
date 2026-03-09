@@ -49,6 +49,25 @@ describe("createReaction", () => {
 
     expect(urn).toBe("urn:li:reaction:456");
   });
+
+  it("includes actor in body when specified", async () => {
+    const client = mockClient();
+    await createReaction(client, { entity: "urn:li:share:abc123", actor: "urn:li:organization:99999" });
+
+    expect(client.create).toHaveBeenCalledWith("/rest/reactions", {
+      root: "urn:li:share:abc123",
+      reactionType: "LIKE",
+      actor: "urn:li:organization:99999",
+    });
+  });
+
+  it("omits actor from body when not specified", async () => {
+    const client = mockClient();
+    await createReaction(client, { entity: "urn:li:share:abc123" });
+
+    const body = vi.mocked(client.create).mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(body).not.toHaveProperty("actor");
+  });
 });
 
 describe("listReactions", () => {

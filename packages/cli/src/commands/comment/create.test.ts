@@ -98,6 +98,31 @@ describe("comment create", () => {
     );
   });
 
+  it("uses organization URN as actor when --as-org is specified", async () => {
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "linkedctl",
+      "comment",
+      "create",
+      "urn:li:share:123",
+      "--text",
+      "Official reply",
+      "--as-org",
+      "99999",
+    ]);
+
+    expect(coreMock.getCurrentPersonUrn).not.toHaveBeenCalled();
+    expect(coreMock.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actor: "urn:li:organization:99999",
+        object: "urn:li:share:123",
+        message: "Official reply",
+      }),
+    );
+  });
+
   it("wraps API errors with actionable message", async () => {
     const { LinkedInApiError } = await import("@linkedctl/core");
     vi.mocked(coreMock.createComment).mockRejectedValueOnce(new LinkedInApiError("Forbidden", 403));

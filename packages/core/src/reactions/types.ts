@@ -40,6 +40,8 @@ export interface CreateReactionOptions {
   entity: string;
   /** The type of reaction. Defaults to `"LIKE"`. */
   reactionType?: ReactionType | undefined;
+  /** Optional actor URN (e.g. `urn:li:organization:12345`). When omitted the authenticated user is the actor. */
+  actor?: string | undefined;
 }
 
 /**

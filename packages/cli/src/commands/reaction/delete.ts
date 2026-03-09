@@ -4,7 +4,11 @@
 import { Command } from "commander";
 import { resolveConfig, LinkedInClient, getCurrentPersonUrn, deleteReaction, LinkedInApiError } from "@linkedctl/core";
 
-export async function deleteReactionAction(entityUrn: string, cmd: Command): Promise<void> {
+interface DeleteOpts {
+  asOrg?: string | undefined;
+}
+
+export async function deleteReactionAction(entityUrn: string, opts: DeleteOpts, cmd: Command): Promise<void> {
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
 
   const { config } = await resolveConfig({
@@ -15,7 +19,7 @@ export async function deleteReactionAction(entityUrn: string, cmd: Command): Pro
   const apiVersion = config.apiVersion ?? "";
   const client = new LinkedInClient({ accessToken, apiVersion });
 
-  const actorUrn = await getCurrentPersonUrn(client);
+  const actorUrn = opts.asOrg !== undefined ? `urn:li:organization:${opts.asOrg}` : await getCurrentPersonUrn(client);
 
   try {
     await deleteReaction(client, { entity: entityUrn, actor: actorUrn });
@@ -32,16 +36,18 @@ export function deleteReactionCommand(): Command {
   const cmd = new Command("delete");
   cmd.description("Remove your reaction from a LinkedIn post");
   cmd.argument("<entity-urn>", "entity URN to remove reaction from (e.g. urn:li:share:abc123)");
+  cmd.option("--as-org <org-id>", "act as organization (numeric ID, e.g. 12345)");
 
   cmd.addHelpText(
     "after",
     `
 Examples:
-  linkedctl reaction delete urn:li:share:abc123`,
+  linkedctl reaction delete urn:li:share:abc123
+  linkedctl reaction delete urn:li:share:abc123 --as-org 12345`,
   );
 
-  cmd.action(async (entityUrn: string, _opts: Record<string, unknown>, actionCmd: Command) => {
-    await deleteReactionAction(entityUrn, actionCmd);
+  cmd.action(async (entityUrn: string, opts: DeleteOpts, actionCmd: Command) => {
+    await deleteReactionAction(entityUrn, opts, actionCmd);
   });
 
   return cmd;

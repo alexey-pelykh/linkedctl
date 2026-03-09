@@ -8,6 +8,7 @@ import type { OutputFormat } from "../../output/index.js";
 
 interface CreateOpts {
   text: string;
+  asOrg?: string | undefined;
   format?: string | undefined;
 }
 
@@ -16,6 +17,7 @@ export function createCommentCreateCommand(): Command {
   cmd.description("Create a comment on a LinkedIn post");
   cmd.argument("<urn>", "post URN to comment on (e.g. urn:li:share:...)");
   cmd.requiredOption("--text <text>", "comment text");
+  cmd.option("--as-org <org-id>", "act as organization (numeric ID, e.g. 12345)");
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.addHelpText(
@@ -23,7 +25,8 @@ export function createCommentCreateCommand(): Command {
     `
 Examples:
   linkedctl comment create urn:li:share:123 --text "Great post!"
-  linkedctl comment create urn:li:share:123 --text "Nice work" --format json`,
+  linkedctl comment create urn:li:share:123 --text "Nice work" --format json
+  linkedctl comment create urn:li:share:123 --text "Official reply" --as-org 12345`,
   );
 
   cmd.action(async (urn: string, opts: CreateOpts, actionCmd: Command) => {
@@ -37,7 +40,7 @@ Examples:
     const apiVersion = config.apiVersion ?? "";
     const client = new LinkedInClient({ accessToken, apiVersion });
 
-    const actorUrn = await getCurrentPersonUrn(client);
+    const actorUrn = opts.asOrg !== undefined ? `urn:li:organization:${opts.asOrg}` : await getCurrentPersonUrn(client);
 
     try {
       const commentUrn = await createComment(client, {
