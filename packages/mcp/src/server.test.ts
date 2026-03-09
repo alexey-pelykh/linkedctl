@@ -29,6 +29,10 @@ vi.mock("@linkedctl/core", () => ({
   listComments: vi.fn(),
   getComment: vi.fn(),
   deleteComment: vi.fn(),
+  getPost: vi.fn(),
+  listPosts: vi.fn(),
+  updatePost: vi.fn(),
+  deletePost: vi.fn(),
   uploadImage: vi.fn(),
   uploadVideo: vi.fn(),
   uploadDocument: vi.fn(),
@@ -63,6 +67,10 @@ import {
   listComments,
   getComment,
   deleteComment,
+  getPost,
+  listPosts,
+  updatePost,
+  deletePost,
   uploadImage,
   uploadVideo,
   uploadDocument,
@@ -115,6 +123,10 @@ describe("createMcpServer", () => {
     expect(toolNames).toContain("reaction_create");
     expect(toolNames).toContain("reaction_list");
     expect(toolNames).toContain("reaction_delete");
+    expect(toolNames).toContain("post_get");
+    expect(toolNames).toContain("post_list");
+    expect(toolNames).toContain("post_update");
+    expect(toolNames).toContain("post_delete");
     expect(toolNames).toContain("auth_status");
     expect(toolNames).toContain("auth_revoke");
   });
@@ -1255,6 +1267,263 @@ describe("createMcpServer", () => {
       await client.callTool({
         name: "document_upload",
         arguments: { file: "/path/to/deck.pdf", profile: "work" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "work",
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+    });
+  });
+
+  describe("post_get", () => {
+    it("fetches a post by URN and returns JSON", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getPost).mockResolvedValue({
+        id: "urn:li:share:123",
+        author: "urn:li:person:abc123",
+        commentary: "Hello world",
+        visibility: "PUBLIC",
+        lifecycleState: "PUBLISHED",
+        distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+        isReshareDisabledByAuthor: false,
+      });
+
+      const result = await client.callTool({
+        name: "post_get",
+        arguments: { urn: "urn:li:share:123" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      expect(getPost).toHaveBeenCalledWith(expect.anything(), "urn:li:share:123");
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("id", "urn:li:share:123");
+      expect(parsed).toHaveProperty("commentary", "Hello world");
+    });
+
+    it("passes profile option", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getPost).mockResolvedValue({
+        id: "urn:li:share:456",
+        author: "urn:li:person:abc123",
+        commentary: "Test",
+        visibility: "PUBLIC",
+        lifecycleState: "PUBLISHED",
+        distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+        isReshareDisabledByAuthor: false,
+      });
+
+      await client.callTool({
+        name: "post_get",
+        arguments: { urn: "urn:li:share:456", profile: "work" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "work",
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+    });
+  });
+
+  describe("post_list", () => {
+    it("lists posts for authenticated user", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(listPosts).mockResolvedValue({
+        elements: [
+          {
+            id: "urn:li:share:100",
+            author: "urn:li:person:abc123",
+            commentary: "Post one",
+            visibility: "PUBLIC",
+            lifecycleState: "PUBLISHED",
+            distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+            isReshareDisabledByAuthor: false,
+          },
+        ],
+        paging: { count: 10, start: 0, total: 1 },
+      });
+
+      const result = await client.callTool({
+        name: "post_list",
+        arguments: {},
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      expect(listPosts).toHaveBeenCalledWith(expect.anything(), {
+        author: "urn:li:person:abc123",
+        count: undefined,
+        start: undefined,
+      });
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("elements");
+      expect(parsed).toHaveProperty("paging");
+    });
+
+    it("passes count and start options", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(listPosts).mockResolvedValue({
+        elements: [],
+        paging: { count: 5, start: 10 },
+      });
+
+      await client.callTool({
+        name: "post_list",
+        arguments: { count: 5, start: 10, profile: "work" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "work",
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      expect(listPosts).toHaveBeenCalledWith(expect.anything(), {
+        author: "urn:li:person:abc123",
+        count: 5,
+        start: 10,
+      });
+    });
+  });
+
+  describe("post_update", () => {
+    it("updates post commentary and returns confirmation", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(updatePost).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "post_update",
+        arguments: { urn: "urn:li:share:123", text: "Updated text" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      expect(updatePost).toHaveBeenCalledWith(expect.anything(), "urn:li:share:123", { text: "Updated text" });
+      expect(result.content).toEqual([{ type: "text", text: "Post updated: urn:li:share:123" }]);
+    });
+
+    it("passes profile option", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(updatePost).mockResolvedValue(undefined);
+
+      await client.callTool({
+        name: "post_update",
+        arguments: { urn: "urn:li:share:123", text: "New text", profile: "work" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "work",
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+    });
+  });
+
+  describe("post_delete", () => {
+    it("deletes a post and returns confirmation", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(deletePost).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "post_delete",
+        arguments: { urn: "urn:li:share:123" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      expect(deletePost).toHaveBeenCalledWith(expect.anything(), "urn:li:share:123");
+      expect(result.content).toEqual([{ type: "text", text: "Post deleted: urn:li:share:123" }]);
+    });
+
+    it("passes profile option", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(deletePost).mockResolvedValue(undefined);
+
+      await client.callTool({
+        name: "post_delete",
+        arguments: { urn: "urn:li:share:456", profile: "work" },
       });
 
       expect(resolveConfig).toHaveBeenCalledWith({
