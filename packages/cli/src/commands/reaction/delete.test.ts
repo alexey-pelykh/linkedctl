@@ -56,6 +56,20 @@ describe("reaction delete", () => {
     );
   });
 
+  it("uses organization URN as actor when --as-org is specified", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "reaction", "delete", "urn:li:share:abc123", "--as-org", "99999"]);
+
+    expect(coreMock.getCurrentPersonUrn).not.toHaveBeenCalled();
+    expect(coreMock.deleteReaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        entity: "urn:li:share:abc123",
+        actor: "urn:li:organization:99999",
+      }),
+    );
+  });
+
   it("outputs confirmation message", async () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "reaction", "delete", "urn:li:share:abc123"]);

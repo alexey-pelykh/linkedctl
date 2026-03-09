@@ -89,6 +89,20 @@ describe("reaction create", () => {
     );
   });
 
+  it("passes organization actor when --as-org is specified", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "reaction", "create", "urn:li:share:abc123", "--as-org", "99999"]);
+
+    expect(coreMock.createReaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        entity: "urn:li:share:abc123",
+        reactionType: "LIKE",
+        actor: "urn:li:organization:99999",
+      }),
+    );
+  });
+
   it("rejects invalid --type value", async () => {
     const program = createProgram();
     for (const cmd of program.commands) {

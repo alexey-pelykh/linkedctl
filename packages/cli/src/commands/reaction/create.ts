@@ -9,6 +9,7 @@ import type { OutputFormat } from "../../output/index.js";
 
 interface CreateOpts {
   type?: string | undefined;
+  asOrg?: string | undefined;
   format?: string | undefined;
 }
 
@@ -24,11 +25,13 @@ export async function createReactionAction(entityUrn: string, opts: CreateOpts, 
   const client = new LinkedInClient({ accessToken, apiVersion });
 
   const reactionType = (opts.type ?? "LIKE") as ReactionType;
+  const actor = opts.asOrg !== undefined ? `urn:li:organization:${opts.asOrg}` : undefined;
 
   try {
     const reactionUrn = await createReaction(client, {
       entity: entityUrn,
       reactionType,
+      actor,
     });
 
     const format = resolveFormat(opts.format as OutputFormat | undefined, process.stdout, globals.json === true);
@@ -47,6 +50,7 @@ export function createReactionCommand(): Command {
   cmd.description("Add a reaction to a LinkedIn post");
   cmd.argument("<entity-urn>", "entity URN to react to (e.g. urn:li:share:abc123)");
   cmd.addOption(new Option("--type <type>", "reaction type").choices([...REACTION_TYPES]).default("LIKE"));
+  cmd.option("--as-org <org-id>", "act as organization (numeric ID, e.g. 12345)");
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.addHelpText(
@@ -55,7 +59,8 @@ export function createReactionCommand(): Command {
 Examples:
   linkedctl reaction create urn:li:share:abc123
   linkedctl reaction create urn:li:share:abc123 --type PRAISE
-  linkedctl reaction create urn:li:share:abc123 --type ENTERTAINMENT --format json`,
+  linkedctl reaction create urn:li:share:abc123 --type ENTERTAINMENT --format json
+  linkedctl reaction create urn:li:share:abc123 --as-org 12345`,
   );
 
   cmd.action(async (entityUrn: string, opts: CreateOpts, actionCmd: Command) => {

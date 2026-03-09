@@ -525,13 +525,14 @@ export function createMcpServer(): McpServer {
     {
       title: "Create Reaction",
       description:
-        "Add a reaction to a LinkedIn post. Supports LIKE (default), PRAISE, EMPATHY, INTEREST, APPRECIATION, ENTERTAINMENT.",
+        "Add a reaction to a LinkedIn post. Supports LIKE (default), PRAISE, EMPATHY, INTEREST, APPRECIATION, ENTERTAINMENT. Use as_org to react as an organization.",
       inputSchema: {
         entity_urn: z.string().describe("Entity URN to react to (e.g. urn:li:share:abc123)"),
         reaction_type: z
           .enum(REACTION_TYPES as unknown as [string, ...string[]])
           .optional()
           .describe("Type of reaction (defaults to LIKE)"),
+        as_org: z.string().optional().describe("Organization ID to act as (numeric, e.g. 12345)"),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
@@ -545,9 +546,11 @@ export function createMcpServer(): McpServer {
       const client = new LinkedInClient({ accessToken, apiVersion });
 
       try {
+        const actor = args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : undefined;
         const reactionUrn = await createReaction(client, {
           entity: args.entity_urn,
           reactionType: (args.reaction_type as ReactionType | undefined) ?? "LIKE",
+          actor,
         });
 
         return {
@@ -623,9 +626,10 @@ export function createMcpServer(): McpServer {
     "reaction_delete",
     {
       title: "Delete Reaction",
-      description: "Remove your reaction from a LinkedIn post",
+      description: "Remove a reaction from a LinkedIn post. Use as_org to delete an organization's reaction.",
       inputSchema: {
         entity_urn: z.string().describe("Entity URN to remove reaction from (e.g. urn:li:share:abc123)"),
+        as_org: z.string().optional().describe("Organization ID to act as (numeric, e.g. 12345)"),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
@@ -638,7 +642,8 @@ export function createMcpServer(): McpServer {
       const apiVersion = config.apiVersion ?? "";
       const client = new LinkedInClient({ accessToken, apiVersion });
 
-      const actorUrn = await getCurrentPersonUrn(client);
+      const actorUrn =
+        args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : await getCurrentPersonUrn(client);
 
       try {
         await deleteReaction(client, { entity: args.entity_urn, actor: actorUrn });
@@ -667,10 +672,11 @@ export function createMcpServer(): McpServer {
     "comment_create",
     {
       title: "Create Comment",
-      description: "Create a comment on a LinkedIn post",
+      description: "Create a comment on a LinkedIn post. Use as_org to comment as an organization.",
       inputSchema: {
         post_urn: z.string().describe("Post URN to comment on (e.g. urn:li:share:...)"),
         text: z.string().describe("The comment text"),
+        as_org: z.string().optional().describe("Organization ID to act as (numeric, e.g. 12345)"),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
@@ -683,7 +689,8 @@ export function createMcpServer(): McpServer {
       const apiVersion = config.apiVersion ?? "";
       const client = new LinkedInClient({ accessToken, apiVersion });
 
-      const actorUrn = await getCurrentPersonUrn(client);
+      const actorUrn =
+        args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : await getCurrentPersonUrn(client);
 
       const commentUrn = await createComment(client, {
         actor: actorUrn,

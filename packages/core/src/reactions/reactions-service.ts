@@ -30,10 +30,13 @@ function encodeUrnForKey(urn: string): string {
  * Create a reaction on a LinkedIn entity.
  */
 export async function createReaction(client: LinkedInClient, options: CreateReactionOptions): Promise<string> {
-  const body = {
+  const body: Record<string, unknown> = {
     root: options.entity,
     reactionType: options.reactionType ?? "LIKE",
   };
+  if (options.actor !== undefined) {
+    body["actor"] = options.actor;
+  }
 
   return client.create("/rest/reactions", body);
 }
