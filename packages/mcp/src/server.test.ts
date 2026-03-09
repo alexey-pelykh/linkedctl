@@ -9,7 +9,15 @@ import { createMcpServer } from "./server.js";
 vi.mock("@linkedctl/core", () => ({
   resolveConfig: vi.fn(),
   LinkedInClient: vi.fn(),
+  LinkedInAuthError: class LinkedInAuthError extends Error {
+    public readonly status = 401;
+    constructor(message: string) {
+      super(message);
+      this.name = "LinkedInAuthError";
+    }
+  },
   getCurrentPersonUrn: vi.fn(),
+  getUserInfo: vi.fn(),
   createTextPost: vi.fn(),
   loadConfigFile: vi.fn(),
   validateConfig: vi.fn(),
@@ -21,7 +29,9 @@ vi.mock("@linkedctl/core", () => ({
 import {
   resolveConfig,
   LinkedInClient,
+  LinkedInAuthError,
   getCurrentPersonUrn,
+  getUserInfo,
   createTextPost,
   loadConfigFile,
   validateConfig,
@@ -55,13 +65,119 @@ describe("createMcpServer", () => {
     await cleanup();
   });
 
-  it("lists post_create, auth_status, and auth_revoke tools", async () => {
+  it("lists whoami, post_create, auth_status, and auth_revoke tools", async () => {
     const result = await client.listTools();
     const toolNames = result.tools.map((t) => t.name);
 
+    expect(toolNames).toContain("whoami");
     expect(toolNames).toContain("post_create");
     expect(toolNames).toContain("auth_status");
     expect(toolNames).toContain("auth_revoke");
+  });
+
+  describe("whoami", () => {
+    it("returns user name, email, and picture", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getUserInfo).mockResolvedValue({
+        sub: "abc123",
+        name: "Jane Doe",
+        given_name: "Jane",
+        family_name: "Doe",
+        picture: "https://media.licdn.com/photo.jpg",
+        email: "jane@example.com",
+        email_verified: true,
+      });
+
+      const result = await client.callTool({
+        name: "whoami",
+        arguments: {},
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email"],
+      });
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: "Name: Jane Doe\nEmail: jane@example.com\nPicture: https://media.licdn.com/photo.jpg",
+        },
+      ]);
+    });
+
+    it("passes profile option", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getUserInfo).mockResolvedValue({
+        sub: "xyz789",
+        name: "John Smith",
+        given_name: "John",
+        family_name: "Smith",
+        picture: "https://media.licdn.com/photo2.jpg",
+        email: "john@example.com",
+        email_verified: true,
+      });
+
+      const result = await client.callTool({
+        name: "whoami",
+        arguments: { profile: "work" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "work",
+        requiredScopes: ["openid", "profile", "email"],
+      });
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: "Name: John Smith\nEmail: john@example.com\nPicture: https://media.licdn.com/photo2.jpg",
+        },
+      ]);
+    });
+
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getUserInfo).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await client.callTool({
+        name: "whoami",
+        arguments: {},
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
   });
 
   describe("post_create", () => {
