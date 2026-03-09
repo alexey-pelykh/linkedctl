@@ -3,12 +3,14 @@
 
 import { Command } from "commander";
 import { loadConfigFile, validateConfig, clearOAuthTokens } from "@linkedctl/core";
+import { confirmOrAbort } from "../../confirm.js";
 
 export function logoutCommand(): Command {
   const cmd = new Command("logout");
   cmd.description("Clear stored credentials from the active config");
+  cmd.option("-f, --force", "skip confirmation prompt");
 
-  cmd.action(async (_opts: Record<string, unknown>, actionCmd: Command) => {
+  cmd.action(async (opts: { force?: true }, actionCmd: Command) => {
     const rootOpts = actionCmd.optsWithGlobals();
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;
 
@@ -22,8 +24,10 @@ export function logoutCommand(): Command {
       );
     }
 
-    await clearOAuthTokens({ profile: profileFlag });
     const label = profileFlag ?? "default";
+    await confirmOrAbort(`Clear credentials for profile "${label}"?`, opts.force === true);
+
+    await clearOAuthTokens({ profile: profileFlag });
     console.log(`Credentials cleared for profile "${label}".`);
   });
 

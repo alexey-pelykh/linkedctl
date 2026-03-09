@@ -3,12 +3,14 @@
 
 import { Command } from "commander";
 import { loadConfigFile, validateConfig, clearOAuthTokens, revokeAccessToken } from "@linkedctl/core";
+import { confirmOrAbort } from "../../confirm.js";
 
 export function revokeCommand(): Command {
   const cmd = new Command("revoke");
   cmd.description("Revoke the access token server-side and clear local credentials");
+  cmd.option("-f, --force", "skip confirmation prompt");
 
-  cmd.action(async (_opts: Record<string, unknown>, actionCmd: Command) => {
+  cmd.action(async (opts: { force?: true }, actionCmd: Command) => {
     const rootOpts = actionCmd.optsWithGlobals();
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;
 
@@ -19,6 +21,8 @@ export function revokeCommand(): Command {
     const clientId = config.oauth?.clientId;
     const clientSecret = config.oauth?.clientSecret;
     const label = profileFlag ?? "default";
+
+    await confirmOrAbort(`Revoke access token and clear credentials for profile "${label}"?`, opts.force === true);
 
     if (accessToken === undefined || accessToken === "" || clientId === undefined || clientSecret === undefined) {
       await clearOAuthTokens({ profile: profileFlag });

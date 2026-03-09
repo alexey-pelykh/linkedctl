@@ -4,6 +4,7 @@
 import { join } from "node:path";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import * as core from "@linkedctl/core";
+import * as readlinePromises from "node:readline/promises";
 import { deleteCommand } from "./delete.js";
 
 vi.mock("@linkedctl/core", async (importOriginal) => {
@@ -27,20 +28,41 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   };
 });
 
+vi.mock("node:readline/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof readlinePromises>();
+  return { ...actual };
+});
+
 const { homedir } = await import("node:os");
 const { unlink } = await import("node:fs/promises");
 
+function mockReadline(answer: string) {
+  const closeFn = vi.fn();
+
+  vi.spyOn(readlinePromises, "createInterface").mockReturnValue({
+    question: vi.fn().mockResolvedValue(answer),
+    close: closeFn,
+  } as never);
+
+  return { closeFn };
+}
+
 describe("profile delete", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
+  let originalIsTTY: boolean | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.mocked(homedir).mockReturnValue("/mock/home");
     vi.mocked(unlink).mockResolvedValue(undefined);
+    originalIsTTY = process.stdin.isTTY;
+    // Default to non-TTY so existing tests don't need prompts
+    Object.defineProperty(process.stdin, "isTTY", { value: undefined, writable: true });
   });
 
   afterEach(() => {
+    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, writable: true });
     vi.restoreAllMocks();
   });
 
@@ -73,5 +95,44 @@ describe("profile delete", () => {
 
     const cmd = deleteCommand();
     await expect(cmd.parseAsync(["work"], { from: "user" })).rejects.toThrow(/I\/O error/);
+  });
+
+  it("prompts for confirmation in TTY mode", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    mockReadline("y");
+
+    const cmd = deleteCommand();
+    await cmd.parseAsync(["work"], { from: "user" });
+
+    expect(vi.mocked(unlink)).toHaveBeenCalledWith(join("/mock/home", ".linkedctl", "work.yaml"));
+    expect(consoleSpy).toHaveBeenCalledWith('Profile "work" deleted.');
+  });
+
+  it("aborts when user declines confirmation", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    mockReadline("n");
+
+    const cmd = deleteCommand();
+    await expect(cmd.parseAsync(["work"], { from: "user" })).rejects.toThrow("Aborted.");
+    expect(vi.mocked(unlink)).not.toHaveBeenCalled();
+  });
+
+  it("skips confirmation with --force flag", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+
+    const cmd = deleteCommand();
+    await cmd.parseAsync(["work", "--force"], { from: "user" });
+
+    expect(vi.mocked(unlink)).toHaveBeenCalledWith(join("/mock/home", ".linkedctl", "work.yaml"));
+    expect(consoleSpy).toHaveBeenCalledWith('Profile "work" deleted.');
+  });
+
+  it("skips confirmation in non-TTY mode", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: undefined, writable: true });
+
+    const cmd = deleteCommand();
+    await cmd.parseAsync(["work"], { from: "user" });
+
+    expect(vi.mocked(unlink)).toHaveBeenCalledWith(join("/mock/home", ".linkedctl", "work.yaml"));
   });
 });
