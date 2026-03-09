@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { createProgram } from "../../program.js";
 
@@ -273,5 +277,112 @@ describe("post create", () => {
     await expect(program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello"])).rejects.toThrow(
       /Failed to create post/,
     );
+  });
+
+  describe("--text-file", () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await mkdtemp(join(tmpdir(), "linkedctl-test-"));
+    });
+
+    afterEach(async () => {
+      await rm(tempDir, { recursive: true, force: true });
+    });
+
+    it("reads post text from a file on post create", async () => {
+      const filePath = join(tempDir, "draft.txt");
+      await writeFile(filePath, "Hello from file", "utf-8");
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text-file", filePath]);
+
+      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Hello from file",
+        }),
+      );
+    });
+
+    it("reads post text from a file on post shorthand", async () => {
+      const filePath = join(tempDir, "draft.txt");
+      await writeFile(filePath, "Hello from file shorthand", "utf-8");
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "--text-file", filePath]);
+
+      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Hello from file shorthand",
+        }),
+      );
+    });
+
+    it("trims whitespace from file content", async () => {
+      const filePath = join(tempDir, "draft.txt");
+      await writeFile(filePath, "  Hello trimmed  \n\n", "utf-8");
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text-file", filePath]);
+
+      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Hello trimmed",
+        }),
+      );
+    });
+
+    it("--text takes precedence over --text-file on post create", async () => {
+      const filePath = join(tempDir, "draft.txt");
+      await writeFile(filePath, "from file", "utf-8");
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "from option",
+        "--text-file",
+        filePath,
+      ]);
+
+      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "from option",
+        }),
+      );
+    });
+
+    it("--text takes precedence over --text-file on post shorthand", async () => {
+      const filePath = join(tempDir, "draft.txt");
+      await writeFile(filePath, "from file", "utf-8");
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "--text", "from option", "--text-file", filePath]);
+
+      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "from option",
+        }),
+      );
+    });
+
+    it("produces a clear error when file is not found", async () => {
+      const filePath = join(tempDir, "nonexistent.txt");
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync(["node", "linkedctl", "post", "create", "--text-file", filePath]),
+      ).rejects.toThrow(/ENOENT/);
+    });
   });
 });
