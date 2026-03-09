@@ -120,11 +120,14 @@ export function setupCommand(): Command {
       await saveOAuthScope(scope, writeOpts);
 
       process.stderr.write("\n");
-      process.stderr.write("PKCE (Proof Key for Code Exchange) improves security for native OAuth apps.\n");
-      process.stderr.write("LinkedIn requires PKCE to be enabled for your app by LinkedIn support.\n");
-      const pkceAnswer = await rl.question("Is PKCE enabled for your app? [y/N] ");
+      process.stderr.write("PKCE (Proof Key for Code Exchange) adds extra security to the OAuth flow.\n");
+      process.stderr.write("Most apps don't need this unless LinkedIn has specifically enabled it for your app.\n");
+      const pkceAnswer = await rl.question("Enable PKCE? [y/N] ");
       const pkce = pkceAnswer.trim().toLowerCase() === "y" || pkceAnswer.trim().toLowerCase() === "yes";
       await saveOAuthPkce(pkce, writeOpts);
+      if (pkce) {
+        process.stderr.write("  If login fails, re-run setup and answer No to this question.\n");
+      }
       await saveApiVersion(DEFAULT_API_VERSION, writeOpts);
 
       if (profileFlag !== undefined) {
