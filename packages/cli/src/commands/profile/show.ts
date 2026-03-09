@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { loadConfigFile, validateConfig, isValidProfileName } from "@linkedctl/core";
+import type { OutputFormat } from "../../output/index.js";
+import { resolveFormat, formatOutput } from "../../output/index.js";
 
 function redactSecret(value: string): string {
   if (value.length <= 8) {
@@ -15,8 +17,9 @@ export function showCommand(): Command {
   const cmd = new Command("show");
   cmd.description("Show profile details (secrets redacted)");
   cmd.argument("<name>", "profile name");
+  cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
-  cmd.action(async (name: string) => {
+  cmd.action(async (name: string, opts: Record<string, unknown>, actionCmd: Command) => {
     if (!isValidProfileName(name)) {
       throw new Error(`Invalid profile name "${name}". Names must not contain path separators or be empty.`);
     }
@@ -27,29 +30,30 @@ export function showCommand(): Command {
     }
 
     const { config } = validateConfig(raw);
+    const rootOpts = actionCmd.optsWithGlobals();
+    const globalJson = rootOpts["json"] === true;
+    const format = resolveFormat(opts["format"] as OutputFormat | undefined, process.stdout, globalJson);
 
-    console.log(`Profile: ${name}`);
-
-    if (config.oauth !== undefined) {
-      if (config.oauth.clientId !== undefined) {
-        console.log(`  client-id: ${redactSecret(config.oauth.clientId)}`);
-      }
-      if (config.oauth.clientSecret !== undefined) {
-        console.log(`  client-secret: ${redactSecret(config.oauth.clientSecret)}`);
-      }
-      if (config.oauth.accessToken !== undefined) {
-        console.log(`  access-token: ${redactSecret(config.oauth.accessToken)}`);
-      }
-      if (config.oauth.refreshToken !== undefined) {
-        console.log(`  refresh-token: ${redactSecret(config.oauth.refreshToken)}`);
-      }
-      if (config.oauth.tokenExpiresAt !== undefined) {
-        console.log(`  token-expires-at: ${config.oauth.tokenExpiresAt}`);
-      }
-    }
-
-    if (config.apiVersion !== undefined) {
-      console.log(`  api-version: ${config.apiVersion}`);
+    if (format === "json") {
+      const data: Record<string, string | null> = {
+        profile: name,
+        clientId: config.oauth?.clientId !== undefined ? redactSecret(config.oauth.clientId) : null,
+        clientSecret: config.oauth?.clientSecret !== undefined ? redactSecret(config.oauth.clientSecret) : null,
+        accessToken: config.oauth?.accessToken !== undefined ? redactSecret(config.oauth.accessToken) : null,
+        refreshToken: config.oauth?.refreshToken !== undefined ? redactSecret(config.oauth.refreshToken) : null,
+        tokenExpiresAt: config.oauth?.tokenExpiresAt ?? null,
+        apiVersion: config.apiVersion ?? null,
+      };
+      console.log(formatOutput(data, format));
+    } else {
+      const data: Record<string, string> = { profile: name };
+      if (config.oauth?.clientId !== undefined) data["client-id"] = redactSecret(config.oauth.clientId);
+      if (config.oauth?.clientSecret !== undefined) data["client-secret"] = redactSecret(config.oauth.clientSecret);
+      if (config.oauth?.accessToken !== undefined) data["access-token"] = redactSecret(config.oauth.accessToken);
+      if (config.oauth?.refreshToken !== undefined) data["refresh-token"] = redactSecret(config.oauth.refreshToken);
+      if (config.oauth?.tokenExpiresAt !== undefined) data["token-expires-at"] = config.oauth.tokenExpiresAt;
+      if (config.apiVersion !== undefined) data["api-version"] = config.apiVersion;
+      console.log(formatOutput(data, format));
     }
   });
 
