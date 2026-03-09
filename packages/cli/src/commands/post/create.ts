@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { Command, Option } from "commander";
+import { Command, InvalidArgumentError, Option } from "commander";
 import { resolveConfig, LinkedInClient, getCurrentPersonUrn, createTextPost, LinkedInApiError } from "@linkedctl/core";
 import type { PostVisibility } from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
@@ -84,6 +84,13 @@ export function createCommand(): Command {
   cmd.addOption(
     new Option("--visibility <visibility>", "post visibility (PUBLIC or CONNECTIONS)")
       .choices(["PUBLIC", "CONNECTIONS"])
+      .argParser((v: string) => {
+        const normalized = v.toUpperCase();
+        if (!["PUBLIC", "CONNECTIONS"].includes(normalized)) {
+          throw new InvalidArgumentError("Allowed choices are PUBLIC, CONNECTIONS.");
+        }
+        return normalized;
+      })
       .default("PUBLIC"),
   );
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));

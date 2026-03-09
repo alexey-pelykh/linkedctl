@@ -167,6 +167,42 @@ describe("post create", () => {
     );
   });
 
+  it("accepts lowercase --visibility value and normalizes to uppercase", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--visibility", "connections"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        visibility: "CONNECTIONS",
+      }),
+    );
+  });
+
+  it("accepts mixed-case --visibility value and normalizes to uppercase", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--visibility", "Public"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        visibility: "PUBLIC",
+      }),
+    );
+  });
+
+  it("accepts lowercase --visibility on post shorthand", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "post", "--text", "Hello", "--visibility", "public"]);
+
+    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        visibility: "PUBLIC",
+      }),
+    );
+  });
+
   it("rejects invalid --visibility value", async () => {
     const program = createProgram();
     for (const cmd of program.commands) {
