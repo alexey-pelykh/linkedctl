@@ -1009,6 +1009,72 @@ describe("createMcpServer", () => {
       ]);
       expect(result.isError).toBe(true);
     });
+
+    it("creates post as organization when as_org is specified", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getOrganization).mockResolvedValue({ id: 12345, localizedName: "Test Org" });
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:org123");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: { text: "Org post", as_org: "12345" },
+      });
+
+      expect(getOrganization).toHaveBeenCalledWith(expect.anything(), "12345");
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          author: "urn:li:organization:12345",
+        }),
+      );
+      expect(getCurrentPersonUrn).not.toHaveBeenCalled();
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:org123" }]);
+    });
+
+    it("uses org URN as owner for file uploads when as_org is specified", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getOrganization).mockResolvedValue({ id: 12345, localizedName: "Test Org" });
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-image"));
+      vi.mocked(uploadImage).mockResolvedValue("urn:li:image:org456");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:org789");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: { text: "Org image post", image_file: "/path/to/logo.jpg", as_org: "12345" },
+      });
+
+      expect(uploadImage).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:organization:12345",
+        }),
+      );
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          author: "urn:li:organization:12345",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:org789" }]);
+    });
   });
 
   describe("comment_create", () => {
@@ -1282,6 +1348,42 @@ describe("createMcpServer", () => {
         profile: "work",
         requiredScopes: ["openid", "profile", "email", "w_member_social"],
       });
+    });
+
+    it("uploads as organization when as_org is specified", async () => {
+      vi.mocked(stat).mockResolvedValue({ size: 1024 } as ReturnType<
+        typeof import("node:fs/promises").stat
+      > extends Promise<infer T>
+        ? T
+        : never);
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-pdf-content"));
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getOrganization).mockResolvedValue({ id: 12345, localizedName: "Test Org" });
+      vi.mocked(uploadDocument).mockResolvedValue("urn:li:document:D789");
+
+      const result = await client.callTool({
+        name: "document_upload",
+        arguments: { file: "/path/to/deck.pdf", as_org: "12345" },
+      });
+
+      expect(getOrganization).toHaveBeenCalledWith(expect.anything(), "12345");
+      expect(uploadDocument).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:organization:12345",
+        }),
+      );
+      expect(getCurrentPersonUrn).not.toHaveBeenCalled();
+      expect(result.content).toEqual([{ type: "text", text: "Document uploaded: urn:li:document:D789" }]);
     });
   });
 

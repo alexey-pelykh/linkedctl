@@ -20,6 +20,7 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
       warnings: [],
     }),
     getCurrentPersonUrn: vi.fn().mockResolvedValue("urn:li:person:person123"),
+    getOrganization: vi.fn().mockResolvedValue({ id: 12345, localizedName: "Test Org" }),
     uploadVideo: vi.fn().mockResolvedValue("urn:li:video:V1234567890"),
   };
 });
@@ -44,6 +45,7 @@ describe("media upload-video", () => {
     });
     vi.mocked(coreMock.uploadVideo).mockResolvedValue("urn:li:video:V1234567890");
     vi.mocked(coreMock.getCurrentPersonUrn).mockResolvedValue("urn:li:person:person123");
+    vi.mocked(coreMock.getOrganization).mockResolvedValue({ id: 12345, localizedName: "Test Org" });
     tempDir = await mkdtemp(join(tmpdir(), "linkedctl-test-"));
   });
 
@@ -143,5 +145,38 @@ describe("media upload-video", () => {
     await expect(
       program.parseAsync(["node", "linkedctl", "media", "upload-video", filePath, "--format", "xml"]),
     ).rejects.toThrow(/Allowed choices are json, table/);
+  });
+
+  it("uploads as organization when --as-org is specified", async () => {
+    const filePath = join(tempDir, "clip.mp4");
+    await writeFile(filePath, Buffer.alloc(1024));
+
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "media", "upload-video", filePath, "--as-org", "12345"]);
+
+    expect(coreMock.getOrganization).toHaveBeenCalledWith(expect.anything(), "12345");
+    expect(coreMock.uploadVideo).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        owner: "urn:li:organization:12345",
+      }),
+    );
+    expect(coreMock.getCurrentPersonUrn).not.toHaveBeenCalled();
+  });
+
+  it("uses person URN when --as-org is not specified", async () => {
+    const filePath = join(tempDir, "clip.mp4");
+    await writeFile(filePath, Buffer.alloc(1024));
+
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "media", "upload-video", filePath]);
+
+    expect(coreMock.getOrganization).not.toHaveBeenCalled();
+    expect(coreMock.uploadVideo).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        owner: "urn:li:person:person123",
+      }),
+    );
   });
 });

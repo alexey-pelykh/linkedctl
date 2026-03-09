@@ -20,6 +20,7 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
       warnings: [],
     }),
     getCurrentPersonUrn: vi.fn().mockResolvedValue("urn:li:person:person123"),
+    getOrganization: vi.fn().mockResolvedValue({ id: 12345, localizedName: "Test Org" }),
     uploadDocument: vi.fn().mockResolvedValue("urn:li:document:D111222333"),
   };
 });
@@ -42,6 +43,7 @@ describe("media upload-document", () => {
     });
     vi.mocked(coreMock.uploadDocument).mockResolvedValue("urn:li:document:D111222333");
     vi.mocked(coreMock.getCurrentPersonUrn).mockResolvedValue("urn:li:person:person123");
+    vi.mocked(coreMock.getOrganization).mockResolvedValue({ id: 12345, localizedName: "Test Org" });
     tempDir = await mkdtemp(join(tmpdir(), "linkedctl-test-"));
   });
 
@@ -193,5 +195,38 @@ describe("media upload-document", () => {
     await program.parseAsync(["node", "linkedctl", "media", "upload-document", filePath]);
 
     expect(coreMock.uploadDocument).toHaveBeenCalled();
+  });
+
+  it("uploads as organization when --as-org is specified", async () => {
+    const filePath = join(tempDir, "deck.pdf");
+    await writeFile(filePath, "fake-pdf");
+
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "media", "upload-document", filePath, "--as-org", "12345"]);
+
+    expect(coreMock.getOrganization).toHaveBeenCalledWith(expect.anything(), "12345");
+    expect(coreMock.uploadDocument).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        owner: "urn:li:organization:12345",
+      }),
+    );
+    expect(coreMock.getCurrentPersonUrn).not.toHaveBeenCalled();
+  });
+
+  it("uses person URN when --as-org is not specified", async () => {
+    const filePath = join(tempDir, "deck.pdf");
+    await writeFile(filePath, "fake-pdf");
+
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "media", "upload-document", filePath]);
+
+    expect(coreMock.getOrganization).not.toHaveBeenCalled();
+    expect(coreMock.uploadDocument).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        owner: "urn:li:person:person123",
+      }),
+    );
   });
 });

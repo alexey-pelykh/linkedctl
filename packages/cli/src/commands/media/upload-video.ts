@@ -4,12 +4,20 @@
 import { readFile, stat } from "node:fs/promises";
 
 import { Command, Option } from "commander";
-import { resolveConfig, LinkedInClient, getCurrentPersonUrn, uploadVideo, LinkedInApiError } from "@linkedctl/core";
+import {
+  resolveConfig,
+  LinkedInClient,
+  getCurrentPersonUrn,
+  getOrganization,
+  uploadVideo,
+  LinkedInApiError,
+} from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
 import type { OutputFormat } from "../../output/index.js";
 
 interface UploadVideoOpts {
   format?: string | undefined;
+  asOrg?: string | undefined;
 }
 
 export function uploadVideoCommand(): Command {
@@ -17,13 +25,15 @@ export function uploadVideoCommand(): Command {
   cmd.description("Upload a video to LinkedIn via multipart upload");
   cmd.argument("<file>", "path to the video file (MP4)");
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
+  cmd.option("--as-org <id>", "upload as an organization (specify org ID)");
 
   cmd.addHelpText(
     "after",
     `
 Examples:
   linkedctl media upload-video clip.mp4
-  linkedctl media upload-video ~/Videos/demo.mp4 --format json`,
+  linkedctl media upload-video ~/Videos/demo.mp4 --format json
+  linkedctl media upload-video promo.mp4 --as-org 12345`,
   );
 
   cmd.action(async (file: string, opts: UploadVideoOpts, actionCmd: Command) => {
@@ -44,7 +54,13 @@ Examples:
     const apiVersion = config.apiVersion ?? "";
     const client = new LinkedInClient({ accessToken, apiVersion });
 
-    const ownerUrn = await getCurrentPersonUrn(client);
+    let ownerUrn: string;
+    if (opts.asOrg !== undefined) {
+      await getOrganization(client, opts.asOrg);
+      ownerUrn = `urn:li:organization:${opts.asOrg}`;
+    } else {
+      ownerUrn = await getCurrentPersonUrn(client);
+    }
 
     try {
       console.error(`Uploading video (${data.byteLength} bytes)…`);

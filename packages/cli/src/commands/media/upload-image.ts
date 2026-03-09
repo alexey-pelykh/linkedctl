@@ -9,6 +9,7 @@ import {
   resolveConfig,
   LinkedInClient,
   getCurrentPersonUrn,
+  getOrganization,
   uploadImage,
   LinkedInApiError,
   SUPPORTED_IMAGE_TYPES,
@@ -18,6 +19,7 @@ import type { OutputFormat } from "../../output/index.js";
 
 interface UploadImageOpts {
   format?: string | undefined;
+  asOrg?: string | undefined;
 }
 
 export function uploadImageCommand(): Command {
@@ -25,13 +27,15 @@ export function uploadImageCommand(): Command {
   cmd.description("Upload an image to LinkedIn and return the image URN");
   cmd.argument("<file>", "path to image file (JPG, PNG, or GIF)");
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
+  cmd.option("--as-org <id>", "upload as an organization (specify org ID)");
 
   cmd.addHelpText(
     "after",
     `
 Examples:
   linkedctl media upload-image photo.jpg
-  linkedctl media upload-image banner.png --format json`,
+  linkedctl media upload-image banner.png --format json
+  linkedctl media upload-image logo.png --as-org 12345`,
   );
 
   cmd.action(async (file: string, opts: UploadImageOpts, actionCmd: Command) => {
@@ -52,7 +56,13 @@ Examples:
     const apiVersion = config.apiVersion ?? "";
     const client = new LinkedInClient({ accessToken, apiVersion });
 
-    const ownerUrn = await getCurrentPersonUrn(client);
+    let ownerUrn: string;
+    if (opts.asOrg !== undefined) {
+      await getOrganization(client, opts.asOrg);
+      ownerUrn = `urn:li:organization:${opts.asOrg}`;
+    } else {
+      ownerUrn = await getCurrentPersonUrn(client);
+    }
     const data = new Uint8Array(await readFile(file));
 
     try {
