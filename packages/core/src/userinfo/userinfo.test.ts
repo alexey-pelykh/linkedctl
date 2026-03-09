@@ -38,7 +38,7 @@ describe("getUserInfo", () => {
   it("calls the /v2/userinfo endpoint and returns the response", async () => {
     fetchSpy.mockResolvedValueOnce(jsonResponse(SAMPLE_USERINFO));
 
-    const client = new LinkedInClient({ accessToken: "test-token", apiVersion: "202603" });
+    const client = new LinkedInClient({ accessToken: "test-token", apiVersion: "202601" });
     const result = await getUserInfo(client);
 
     expect(result).toEqual(SAMPLE_USERINFO);
@@ -50,7 +50,7 @@ describe("getUserInfo", () => {
     const withLocale = { ...SAMPLE_USERINFO, locale: { country: "US", language: "en" } };
     fetchSpy.mockResolvedValueOnce(jsonResponse(withLocale));
 
-    const client = new LinkedInClient({ accessToken: "test-token", apiVersion: "202603" });
+    const client = new LinkedInClient({ accessToken: "test-token", apiVersion: "202601" });
     const result = await getUserInfo(client);
 
     expect(result.locale).toEqual({ country: "US", language: "en" });

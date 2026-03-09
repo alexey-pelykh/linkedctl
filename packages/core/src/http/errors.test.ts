@@ -73,25 +73,25 @@ describe("LinkedInRateLimitError", () => {
 
 describe("LinkedInUpgradeRequiredError", () => {
   it("has status 426 and correct name", () => {
-    const error = new LinkedInUpgradeRequiredError("202603");
+    const error = new LinkedInUpgradeRequiredError("202601");
     expect(error.status).toBe(426);
     expect(error.name).toBe("LinkedInUpgradeRequiredError");
   });
 
   it("includes api version in message", () => {
-    const error = new LinkedInUpgradeRequiredError("202603");
-    expect(error.message).toContain("202603");
+    const error = new LinkedInUpgradeRequiredError("202601");
+    expect(error.message).toContain("202601");
     expect(error.message).toContain("no longer supported");
   });
 
   it("is an instance of LinkedInApiError", () => {
-    const error = new LinkedInUpgradeRequiredError("202603");
+    const error = new LinkedInUpgradeRequiredError("202601");
     expect(error).toBeInstanceOf(LinkedInApiError);
   });
 
   it("stores response body", () => {
     const body = { message: "Upgrade Required" };
-    const error = new LinkedInUpgradeRequiredError("202603", body);
+    const error = new LinkedInUpgradeRequiredError("202601", body);
     expect(error.responseBody).toEqual(body);
   });
 });

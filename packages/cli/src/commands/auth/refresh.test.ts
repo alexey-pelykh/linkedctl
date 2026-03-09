@@ -35,7 +35,7 @@ describe("auth refresh", () => {
           "refresh-token": "existing-refresh-token",
           "token-expires-at": "2025-01-01T00:00:00.000Z",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -73,7 +73,7 @@ describe("auth refresh", () => {
           "client-secret": "csecret",
           "refresh-token": "original-refresh-token",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -115,7 +115,7 @@ describe("auth refresh", () => {
           "client-id": "cid",
           "client-secret": "csecret",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -132,7 +132,7 @@ describe("auth refresh", () => {
         oauth: {
           "access-token": "tok",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -150,7 +150,7 @@ describe("auth refresh", () => {
           "client-secret": "csecret",
           "refresh-token": "expired-refresh-token",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });

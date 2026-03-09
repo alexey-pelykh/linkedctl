@@ -31,7 +31,7 @@ function emptyResponse(status: number): Response {
 
 const CLIENT_OPTIONS = {
   accessToken: "test-token",
-  apiVersion: "202603",
+  apiVersion: "202601",
   userAgent: "test-agent",
 } as const;
 
@@ -64,7 +64,7 @@ describe("LinkedInClient", () => {
       const headers = init.headers;
 
       expect(headers.get("Authorization")).toBe("Bearer test-token");
-      expect(headers.get("LinkedIn-Version")).toBe("202603");
+      expect(headers.get("LinkedIn-Version")).toBe("202601");
       expect(headers.get("X-Restli-Protocol-Version")).toBe("2.0.0");
       expect(headers.get("User-Agent")).toBe("test-agent");
     });
@@ -74,7 +74,7 @@ describe("LinkedInClient", () => {
 
       const client = new LinkedInClient({
         accessToken: "token",
-        apiVersion: "202603",
+        apiVersion: "202601",
       });
       await client.request("/test");
 
@@ -195,7 +195,7 @@ describe("LinkedInClient", () => {
       const client = new LinkedInClient(CLIENT_OPTIONS);
 
       await expect(client.request("/v2/me")).rejects.toThrow(LinkedInUpgradeRequiredError);
-      await expect(client.request("/v2/me")).rejects.toThrow(/202603/);
+      await expect(client.request("/v2/me")).rejects.toThrow(/202601/);
     });
 
     it("does not retry on 426", async () => {

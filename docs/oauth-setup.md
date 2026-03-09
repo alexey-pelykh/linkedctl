@@ -63,14 +63,14 @@ You can verify your available scopes under the **Auth** tab in the **OAuth 2.0 s
 
 ## 5. Set the API Version
 
-LinkedCtl requires a LinkedIn API version to be configured. LinkedIn uses date-based version strings (e.g. `202603`). You can find the current version in the [LinkedIn API documentation](https://learn.microsoft.com/en-us/linkedin/marketing/versioning).
+LinkedCtl requires a LinkedIn API version to be configured. LinkedIn uses date-based version strings (e.g. `202601`). You can find the current version in the [LinkedIn API documentation](https://learn.microsoft.com/en-us/linkedin/marketing/versioning).
 
 There are three ways to set the API version:
 
 **Option A: Config file** — add `api-version` to your config file:
 
 ```yaml
-api-version: "202603"
+api-version: "202601"
 ```
 
 LinkedCtl searches for config files in this order: `.linkedctl.yaml` in the current directory, then `~/.linkedctl.yaml` in the home directory. When using a named profile (e.g. `--profile work`), the config is stored at `~/.linkedctl/work.yaml` instead.
@@ -78,7 +78,7 @@ LinkedCtl searches for config files in this order: `.linkedctl.yaml` in the curr
 **Option B: Environment variable**:
 
 ```sh
-export LINKEDCTL_API_VERSION=202603
+export LINKEDCTL_API_VERSION=202601
 ```
 
 When using a named profile, prefix the variable with the uppercased profile name (hyphens become underscores). For example, profile `work` reads `LINKEDCTL_WORK_API_VERSION`.
@@ -86,7 +86,7 @@ When using a named profile, prefix the variable with the uppercased profile name
 **Option C: Profile creation** — when creating a named profile, pass `--api-version`:
 
 ```sh
-linkedctl profile create myprofile --access-token YOUR_TOKEN --api-version 202603
+linkedctl profile create myprofile --access-token YOUR_TOKEN --api-version 202601
 ```
 
 > **Note:** The API version is required. If it is not set, LinkedCtl will exit with a `ConfigError` message telling you to set `LINKEDCTL_API_VERSION`, use `--api-version`, or add `api-version` to your config file.
@@ -128,7 +128,7 @@ Instead of passing flags, you can set environment variables:
 ```sh
 export LINKEDCTL_CLIENT_ID=YOUR_CLIENT_ID
 export LINKEDCTL_CLIENT_SECRET=YOUR_CLIENT_SECRET
-export LINKEDCTL_API_VERSION=202603
+export LINKEDCTL_API_VERSION=202601
 linkedctl auth login
 ```
 
