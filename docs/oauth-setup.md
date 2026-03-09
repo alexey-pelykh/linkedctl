@@ -26,12 +26,12 @@ After creating the app, configure the OAuth 2.0 redirect URL:
 1. Open your app in the [Developer Portal](https://www.linkedin.com/developers/apps)
 2. Go to the **Auth** tab
 3. Under **OAuth 2.0 settings**, find **Authorized redirect URLs for your app**
-4. Add `http://127.0.0.1/callback` as an authorized redirect URL
+4. Add `http://127.0.0.1:18920/callback` as an authorized redirect URL
 5. Click **Update** to save
 
-> **Note:** LinkedCtl starts a local callback server on a random available port (e.g.
-> `http://127.0.0.1:12345/callback`). LinkedIn allows redirect URLs where the registered
-> URL matches the scheme, host, and path — the port is flexible.
+> **Note:** LinkedCtl starts a local callback server on port `18920` by default. If you
+> need a different port, pass `--port <number>` to `linkedctl auth login` and register
+> the matching redirect URL (e.g. `http://127.0.0.1:<number>/callback`).
 
 ## 3. Request OAuth Scopes
 
