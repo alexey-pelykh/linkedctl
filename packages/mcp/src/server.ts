@@ -79,7 +79,7 @@ export function createMcpServer(): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Profile: ${label}\nStatus: not configured\nRun "linkedctl auth login" to set up authentication.`,
+              text: `Profile: ${label}\nStatus: not configured\nConfigure OAuth credentials in your LinkedCtl config file to set up authentication.`,
             },
           ],
         };
@@ -103,7 +103,7 @@ export function createMcpServer(): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Profile: ${label}\nStatus: expired\nExpired: ${expiry.expiresAt.toISOString()}\nRun "linkedctl auth login" to re-authenticate.`,
+              text: `Profile: ${label}\nStatus: expired\nExpired: ${expiry.expiresAt.toISOString()}\nConfigure OAuth credentials in your LinkedCtl config file to re-authenticate.`,
             },
           ],
         };
