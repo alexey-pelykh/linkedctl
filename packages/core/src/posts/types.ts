@@ -69,11 +69,6 @@ export type PostContent =
   | { poll: PollContent };
 
 /**
- * Lifecycle state of a LinkedIn post.
- */
-export type PostLifecycleState = "PUBLISHED" | "DRAFT";
-
-/**
  * Distribution settings for a LinkedIn post.
  */
 export interface PostDistribution {
