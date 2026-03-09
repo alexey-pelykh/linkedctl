@@ -8,7 +8,15 @@ export function postCommand(): Command {
   const cmd = new Command("post");
   cmd.description("Manage LinkedIn posts");
 
+  cmd.enablePositionalOptions();
+
   cmd.argument("[text]", "shorthand: create a post with the given text (text > stdin)");
+  cmd.option("--text <text>", "text content of the post (takes precedence over positional argument)");
+  cmd.addOption(
+    new Option("--visibility <visibility>", "post visibility (PUBLIC or CONNECTIONS)")
+      .choices(["PUBLIC", "CONNECTIONS"])
+      .default("PUBLIC"),
+  );
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.action(async (text: string | undefined, opts: Record<string, unknown>, actionCmd: Command) => {
