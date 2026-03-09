@@ -103,7 +103,7 @@ Revoke the access token server-side and clear local credentials for a profile.
 LinkedCtl stores configuration in YAML files. Each file represents a single profile:
 
 ```yaml
-api-version: "202501"
+api-version: "202603"
 oauth:
     client-id: "YOUR_CLIENT_ID"
     client-secret: "YOUR_CLIENT_SECRET"
@@ -116,7 +116,7 @@ oauth:
 
 | Key                      | Description                           |
 | ------------------------ | ------------------------------------- |
-| `api-version`            | LinkedIn API version (e.g. `202501`)  |
+| `api-version`            | LinkedIn API version (e.g. `202603`)  |
 | `oauth.client-id`        | OAuth 2.0 client ID                   |
 | `oauth.client-secret`    | OAuth 2.0 client secret               |
 | `oauth.access-token`     | OAuth 2.0 access token                |
@@ -154,7 +154,7 @@ linkedctl --profile work post "Hello from my work account!"
 Manage profiles with the `profile` command:
 
 ```sh
-linkedctl profile create work --access-token YOUR_TOKEN --api-version 202501
+linkedctl profile create work --access-token YOUR_TOKEN --api-version 202603
 linkedctl profile list
 linkedctl profile show work
 linkedctl profile delete work
@@ -185,7 +185,7 @@ linkedctl auth token --access-token YOUR_TOKEN
 | `LINKEDCTL_CLIENT_ID`     | LinkedIn OAuth 2.0 client ID                             |
 | `LINKEDCTL_CLIENT_SECRET` | LinkedIn OAuth 2.0 client secret                         |
 | `LINKEDCTL_ACCESS_TOKEN`  | Direct access token (bypasses OAuth flow)                |
-| `LINKEDCTL_API_VERSION`   | LinkedIn API version string (e.g. `202501`) **required** |
+| `LINKEDCTL_API_VERSION`   | LinkedIn API version string (e.g. `202603`) **required** |
 
 Environment variables take precedence over config file values.
 
@@ -280,7 +280,7 @@ The `--format` option defaults to `table` in a terminal and `json` when piped.
 | Option                    | Description                                    |
 | ------------------------- | ---------------------------------------------- |
 | `--access-token <token>`  | OAuth 2.0 access token (required)              |
-| `--api-version <version>` | LinkedIn API version, e.g. `202501` (required) |
+| `--api-version <version>` | LinkedIn API version, e.g. `202603` (required) |
 
 ### `whoami` -- Show Current User
 

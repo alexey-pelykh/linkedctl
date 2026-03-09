@@ -2,7 +2,13 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { describe, expect, it } from "vitest";
-import { LinkedInApiError, LinkedInAuthError, LinkedInRateLimitError, LinkedInServerError } from "./errors.js";
+import {
+  LinkedInApiError,
+  LinkedInAuthError,
+  LinkedInRateLimitError,
+  LinkedInServerError,
+  LinkedInUpgradeRequiredError,
+} from "./errors.js";
 
 describe("LinkedInApiError", () => {
   it("stores status and message", () => {
@@ -61,6 +67,31 @@ describe("LinkedInRateLimitError", () => {
   it("stores response body", () => {
     const body = { message: "Too many requests" };
     const error = new LinkedInRateLimitError("rate limited", 3, body);
+    expect(error.responseBody).toEqual(body);
+  });
+});
+
+describe("LinkedInUpgradeRequiredError", () => {
+  it("has status 426 and correct name", () => {
+    const error = new LinkedInUpgradeRequiredError("202603");
+    expect(error.status).toBe(426);
+    expect(error.name).toBe("LinkedInUpgradeRequiredError");
+  });
+
+  it("includes api version in message", () => {
+    const error = new LinkedInUpgradeRequiredError("202603");
+    expect(error.message).toContain("202603");
+    expect(error.message).toContain("no longer supported");
+  });
+
+  it("is an instance of LinkedInApiError", () => {
+    const error = new LinkedInUpgradeRequiredError("202603");
+    expect(error).toBeInstanceOf(LinkedInApiError);
+  });
+
+  it("stores response body", () => {
+    const body = { message: "Upgrade Required" };
+    const error = new LinkedInUpgradeRequiredError("202603", body);
     expect(error.responseBody).toEqual(body);
   });
 });

@@ -230,7 +230,7 @@ describe("auth setup", () => {
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
-      expect(saveApiVersionSpy).toHaveBeenCalledWith("202501", undefined);
+      expect(saveApiVersionSpy).toHaveBeenCalledWith(core.DEFAULT_API_VERSION, undefined);
     });
   });
 
@@ -239,7 +239,7 @@ describe("auth setup", () => {
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["--profile", "work", "auth", "setup"], { from: "user" }).then(() => {
-      expect(saveApiVersionSpy).toHaveBeenCalledWith("202501", { profile: "work" });
+      expect(saveApiVersionSpy).toHaveBeenCalledWith(core.DEFAULT_API_VERSION, { profile: "work" });
     });
   });
 

@@ -28,7 +28,7 @@ describe("profile show", () => {
     loadConfigFileSpy.mockResolvedValue({
       raw: {
         oauth: { "access-token": "abcdefghijklmnop" },
-        "api-version": "202501",
+        "api-version": "202603",
       },
       path: "/mock/home/.linkedctl/personal.yaml",
     });
@@ -38,7 +38,7 @@ describe("profile show", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith("Profile: personal");
     expect(consoleSpy).toHaveBeenCalledWith("  access-token: abcd****mnop");
-    expect(consoleSpy).toHaveBeenCalledWith("  api-version: 202501");
+    expect(consoleSpy).toHaveBeenCalledWith("  api-version: 202603");
   });
 
   it("shows all redacted oauth fields when present", async () => {
@@ -51,7 +51,7 @@ describe("profile show", () => {
           "refresh-token": "refreshrefreshrefresh",
           "token-expires-at": "2099-12-31T23:59:59Z",
         },
-        "api-version": "202501",
+        "api-version": "202603",
       },
       path: "/mock/home/.linkedctl/work.yaml",
     });
@@ -65,14 +65,14 @@ describe("profile show", () => {
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("  access-token: toke****oken"));
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("  refresh-token: refr****resh"));
     expect(consoleSpy).toHaveBeenCalledWith("  token-expires-at: 2099-12-31T23:59:59Z");
-    expect(consoleSpy).toHaveBeenCalledWith("  api-version: 202501");
+    expect(consoleSpy).toHaveBeenCalledWith("  api-version: 202603");
   });
 
   it("shows short secrets as fully redacted", async () => {
     loadConfigFileSpy.mockResolvedValue({
       raw: {
         oauth: { "access-token": "short" },
-        "api-version": "202501",
+        "api-version": "202603",
       },
       path: "/mock/home/.linkedctl/personal.yaml",
     });

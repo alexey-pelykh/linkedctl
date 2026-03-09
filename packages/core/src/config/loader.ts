@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { parse } from "yaml";
 
 export const CONFIG_DIR = ".linkedctl";
-export const DEFAULT_API_VERSION = "202501";
+export const DEFAULT_API_VERSION = "202603";
 const CONFIG_FILE = ".linkedctl.yaml";
 
 export interface LoadResult {

@@ -29,20 +29,20 @@ describe("validateConfig", () => {
   });
 
   it("validates api-version as string", () => {
-    const result = validateConfig({ "api-version": "202501" });
-    expect(result.config.apiVersion).toBe("202501");
+    const result = validateConfig({ "api-version": "202603" });
+    expect(result.config.apiVersion).toBe("202603");
     expect(result.errors).toEqual([]);
   });
 
   it("errors when api-version is not a string", () => {
-    const result = validateConfig({ "api-version": 202501 });
+    const result = validateConfig({ "api-version": 202603 });
     expect(result.errors).toEqual([expect.stringContaining('"api-version" must be a string')]);
   });
 
   it("warns on unknown top-level keys", () => {
-    const result = validateConfig({ "unknown-key": "value", "api-version": "202501" });
+    const result = validateConfig({ "unknown-key": "value", "api-version": "202603" });
     expect(result.warnings).toEqual([expect.stringContaining('"unknown-key"')]);
-    expect(result.config.apiVersion).toBe("202501");
+    expect(result.config.apiVersion).toBe("202603");
   });
 
   it("validates oauth section with all fields", () => {

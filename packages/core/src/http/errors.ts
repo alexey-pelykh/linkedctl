@@ -40,6 +40,21 @@ export class LinkedInRateLimitError extends LinkedInApiError {
 }
 
 /**
+ * Thrown on HTTP 426 — the configured LinkedIn API version is no longer supported.
+ */
+export class LinkedInUpgradeRequiredError extends LinkedInApiError {
+  constructor(apiVersion: string, responseBody?: unknown) {
+    super(
+      `LinkedIn API version "${apiVersion}" is no longer supported. ` +
+        `Update the "api-version" field in your .linkedctl.yaml configuration to a newer version (format: YYYYMM).`,
+      426,
+      responseBody,
+    );
+    this.name = "LinkedInUpgradeRequiredError";
+  }
+}
+
+/**
  * Thrown on HTTP 5xx — server-side failure.
  */
 export class LinkedInServerError extends LinkedInApiError {

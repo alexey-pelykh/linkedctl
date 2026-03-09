@@ -3,7 +3,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LinkedInClient } from "./linkedin-client.js";
-import { LinkedInApiError, LinkedInAuthError, LinkedInRateLimitError, LinkedInServerError } from "./errors.js";
+import {
+  LinkedInApiError,
+  LinkedInAuthError,
+  LinkedInRateLimitError,
+  LinkedInServerError,
+  LinkedInUpgradeRequiredError,
+} from "./errors.js";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -25,7 +31,7 @@ function emptyResponse(status: number): Response {
 
 const CLIENT_OPTIONS = {
   accessToken: "test-token",
-  apiVersion: "202501",
+  apiVersion: "202603",
   userAgent: "test-agent",
 } as const;
 
@@ -58,7 +64,7 @@ describe("LinkedInClient", () => {
       const headers = init.headers;
 
       expect(headers.get("Authorization")).toBe("Bearer test-token");
-      expect(headers.get("LinkedIn-Version")).toBe("202501");
+      expect(headers.get("LinkedIn-Version")).toBe("202603");
       expect(headers.get("X-Restli-Protocol-Version")).toBe("2.0.0");
       expect(headers.get("User-Agent")).toBe("test-agent");
     });
@@ -68,7 +74,7 @@ describe("LinkedInClient", () => {
 
       const client = new LinkedInClient({
         accessToken: "token",
-        apiVersion: "202501",
+        apiVersion: "202603",
       });
       await client.request("/test");
 
@@ -179,6 +185,41 @@ describe("LinkedInClient", () => {
 
       await expect(client.request("/v2/me")).rejects.toThrow(LinkedInAuthError);
       expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("426 upgrade required", () => {
+    it("throws LinkedInUpgradeRequiredError with api version in message", async () => {
+      fetchSpy.mockResolvedValue(jsonResponse({}, 426));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.request("/v2/me")).rejects.toThrow(LinkedInUpgradeRequiredError);
+      await expect(client.request("/v2/me")).rejects.toThrow(/202603/);
+    });
+
+    it("does not retry on 426", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({}, 426));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.request("/v2/me")).rejects.toThrow(LinkedInUpgradeRequiredError);
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+
+    it("includes response body in error", async () => {
+      const errorBody = { message: "Upgrade Required" };
+      fetchSpy.mockResolvedValueOnce(jsonResponse(errorBody, 426));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      try {
+        await client.request("/v2/me");
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(LinkedInUpgradeRequiredError);
+        expect((error as LinkedInUpgradeRequiredError).responseBody).toEqual(errorBody);
+      }
     });
   });
 

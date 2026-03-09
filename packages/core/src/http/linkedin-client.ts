@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { LinkedInApiError, LinkedInAuthError, LinkedInRateLimitError, LinkedInServerError } from "./errors.js";
+import {
+  LinkedInApiError,
+  LinkedInAuthError,
+  LinkedInRateLimitError,
+  LinkedInServerError,
+  LinkedInUpgradeRequiredError,
+} from "./errors.js";
 
 const RESTLI_PROTOCOL_VERSION = "2.0.0";
 const DEFAULT_BASE_URL = "https://api.linkedin.com";
@@ -12,7 +18,7 @@ const BACKOFF_MAX_MS = 30_000;
 export interface LinkedInClientOptions {
   /** OAuth2 access token. */
   accessToken: string;
-  /** LinkedIn API version identifier (e.g. "202501"). */
+  /** LinkedIn API version identifier (e.g. "202603"). */
   apiVersion: string;
   /** Base URL for the LinkedIn API. */
   baseUrl?: string | undefined;
@@ -98,6 +104,10 @@ export class LinkedInClient {
           continue;
         }
         throw lastError;
+      }
+
+      if (response.status === 426) {
+        throw new LinkedInUpgradeRequiredError(this.apiVersion, body);
       }
 
       if (response.status === 401) {

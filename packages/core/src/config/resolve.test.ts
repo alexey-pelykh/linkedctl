@@ -29,13 +29,13 @@ describe("resolveConfig", () => {
       join(dir, ".linkedctl.yaml"),
       `oauth:
   access-token: "my-token"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
     const { config, warnings } = await resolveConfig({ home: dir, cwd: dir, env: {} });
     expect(config.oauth?.accessToken).toBe("my-token");
-    expect(config.apiVersion).toBe("202501");
+    expect(config.apiVersion).toBe("202603");
     expect(warnings).toEqual([]);
   });
 
@@ -48,7 +48,7 @@ api-version: "202501"
       join(cwd, ".linkedctl.yaml"),
       `oauth:
   access-token: "cwd-token"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
@@ -63,7 +63,7 @@ api-version: "202501"
       join(profileDir, "work.yaml"),
       `oauth:
   access-token: "work-token"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
@@ -77,7 +77,7 @@ api-version: "202501"
       join(dir, ".linkedctl.yaml"),
       `oauth:
   access-token: "file-token"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
@@ -97,7 +97,7 @@ api-version: "202501"
       join(profileDir, "work.yaml"),
       `oauth:
   access-token: "file-token"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
@@ -111,7 +111,7 @@ api-version: "202501"
 
   it("throws ConfigError when access token is missing", async () => {
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, ".linkedctl.yaml"), 'api-version: "202501"\n');
+    await writeFile(join(dir, ".linkedctl.yaml"), 'api-version: "202603"\n');
 
     await expect(resolveConfig({ home: dir, cwd: dir, env: {} })).rejects.toThrow(ConfigError);
     await expect(resolveConfig({ home: dir, cwd: dir, env: {} })).rejects.toThrow(/No access token configured/);
@@ -141,10 +141,10 @@ api-version: "202501"
     const { config } = await resolveConfig({
       home: dir,
       cwd: dir,
-      env: { LINKEDCTL_ACCESS_TOKEN: "env-tok", LINKEDCTL_API_VERSION: "202501" },
+      env: { LINKEDCTL_ACCESS_TOKEN: "env-tok", LINKEDCTL_API_VERSION: "202603" },
     });
     expect(config.oauth?.accessToken).toBe("env-tok");
-    expect(config.apiVersion).toBe("202501");
+    expect(config.apiVersion).toBe("202603");
   });
 
   it("throws ConfigError when required scopes are missing", async () => {
@@ -154,7 +154,7 @@ api-version: "202501"
       `oauth:
   access-token: "tok"
   scope: "openid profile"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
@@ -170,7 +170,7 @@ api-version: "202501"
       `oauth:
   access-token: "tok"
   scope: "openid profile email"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
@@ -189,7 +189,7 @@ api-version: "202501"
       join(dir, ".linkedctl.yaml"),
       `oauth:
   access-token: "tok"
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
@@ -208,7 +208,7 @@ api-version: "202501"
       join(dir, ".linkedctl.yaml"),
       `oauth:
   access-token: "tok"
-api-version: "202501"
+api-version: "202603"
 unknown-field: "val"
 `,
     );
@@ -223,7 +223,7 @@ unknown-field: "val"
       join(dir, ".linkedctl.yaml"),
       `oauth:
   access-token: ""
-api-version: "202501"
+api-version: "202603"
 `,
     );
 
