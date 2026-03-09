@@ -80,3 +80,11 @@ export type {
   ListReactionsOptions,
   DeleteReactionOptions,
 } from "./reactions/types.js";
+export { createComment, listComments, getComment, deleteComment } from "./comments/comments-service.js";
+export type {
+  CreateCommentOptions,
+  ListCommentsOptions,
+  GetCommentOptions,
+  DeleteCommentOptions,
+} from "./comments/comments-service.js";
+export type { Comment } from "./comments/types.js";
