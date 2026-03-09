@@ -81,6 +81,20 @@ export type {
 export { uploadDocument } from "./documents/documents-service.js";
 export { DOCUMENT_EXTENSIONS, DOCUMENT_MAX_SIZE_BYTES } from "./documents/types.js";
 export type { UploadDocumentOptions, InitializeDocumentUploadResponse } from "./documents/types.js";
+export {
+  listOrganizations,
+  getOrganization,
+  getOrganizationFollowerCount,
+} from "./organizations/organizations-service.js";
+export type { ListOrganizationsOptions } from "./organizations/organizations-service.js";
+export type {
+  OrganizationRole,
+  OrganizationRoleAssigneeState,
+  OrganizationAcl,
+  OrganizationAclListResponse,
+  OrganizationData,
+  OrganizationFollowerCountResponse,
+} from "./organizations/types.js";
 export { createReaction, listReactions, deleteReaction } from "./reactions/reactions-service.js";
 export { REACTION_TYPES } from "./reactions/types.js";
 export type {
