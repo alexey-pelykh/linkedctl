@@ -11,6 +11,15 @@ export function whoamiCommand(): Command {
   cmd.description("Display the current authenticated user's profile");
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
+  cmd.addHelpText(
+    "after",
+    `
+Examples:
+  linkedctl whoami
+  linkedctl whoami --format json
+  linkedctl whoami --profile work`,
+  );
+
   cmd.action(async (opts: Record<string, unknown>, actionCmd: Command) => {
     const rootOpts = actionCmd.optsWithGlobals();
     const profileFlag = typeof rootOpts["profile"] === "string" ? rootOpts["profile"] : undefined;

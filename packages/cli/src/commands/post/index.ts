@@ -26,6 +26,15 @@ export function postCommand(): Command {
   );
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
+  cmd.addHelpText(
+    "after",
+    `
+Examples:
+  linkedctl post "Hello from LinkedCtl!"
+  linkedctl post --text "Hello" --visibility CONNECTIONS
+  echo "Hello" | linkedctl post`,
+  );
+
   cmd.action(async (text: string | undefined, opts: Record<string, unknown>, actionCmd: Command) => {
     await createPostAction(text, opts, actionCmd);
   });

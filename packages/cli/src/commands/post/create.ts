@@ -95,6 +95,15 @@ export function createCommand(): Command {
   );
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
+  cmd.addHelpText(
+    "after",
+    `
+Examples:
+  linkedctl post create "Hello from LinkedCtl!"
+  linkedctl post create --text "Hello" --visibility CONNECTIONS
+  echo "Hello" | linkedctl post create`,
+  );
+
   cmd.action(async (text: string | undefined, opts: CreateOpts, actionCmd: Command) => {
     await createPostAction(text, opts, actionCmd);
   });
