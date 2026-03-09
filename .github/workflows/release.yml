@@ -68,6 +68,11 @@ jobs:
             s.packages.forEach(p => { p.version = process.env.VERSION; });
             fs.writeFileSync('server.json', JSON.stringify(s, null, 2) + '\n');
           "
+          VERSION="$VERSION" node -e "
+            const fs = require('fs');
+            const y = fs.readFileSync('smithery.yaml', 'utf8');
+            fs.writeFileSync('smithery.yaml', y.replace(/linkedctl@[^'\"]+/g, 'linkedctl@' + process.env.VERSION));
+          "
 
       - run: pnpm build
 
