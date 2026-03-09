@@ -468,7 +468,7 @@ describe("createMcpServer", () => {
       expect(result.content).toEqual([
         {
           type: "text",
-          text: expect.stringContaining("Only one media option"),
+          text: expect.stringContaining("Only one content option"),
         },
       ]);
       expect(result.isError).toBe(true);
@@ -824,7 +824,166 @@ describe("createMcpServer", () => {
       expect(result.content).toEqual([
         {
           type: "text",
-          text: expect.stringContaining("Only one media option"),
+          text: expect.stringContaining("Only one content option"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("creates a poll post", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:poll001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Vote now!",
+          poll: "Favorite language?",
+          poll_options: ["TypeScript", "Python"],
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: {
+            poll: {
+              question: "Favorite language?",
+              options: [{ text: "TypeScript" }, { text: "Python" }],
+              settings: { duration: "THREE_DAYS" },
+            },
+          },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:poll001" }]);
+    });
+
+    it("creates a poll post with custom duration", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:poll002");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Quick poll",
+          poll: "Yes or no?",
+          poll_options: ["Yes", "No"],
+          poll_duration: "ONE_DAY",
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: {
+            poll: {
+              question: "Yes or no?",
+              options: [{ text: "Yes" }, { text: "No" }],
+              settings: { duration: "ONE_DAY" },
+            },
+          },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:poll002" }]);
+    });
+
+    it("returns error when poll has fewer than 2 options", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Bad poll",
+          poll: "Question?",
+          poll_options: ["Only one"],
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("at least 2"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when poll has more than 4 options", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Too many options",
+          poll: "Question?",
+          poll_options: ["A", "B", "C", "D", "E"],
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("at most 4"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when combining poll with image", async () => {
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Conflicting",
+          poll: "Question?",
+          poll_options: ["A", "B"],
+          image: "urn:li:image:X",
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Only one content option"),
         },
       ]);
       expect(result.isError).toBe(true);

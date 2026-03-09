@@ -261,4 +261,52 @@ describe("createPost", () => {
     expect(call?.[1]).toHaveProperty("lifecycleState", "DRAFT");
     expect(call?.[1]).toHaveProperty("content", { media: { id: "urn:li:image:X" } });
   });
+
+  it("includes poll content for poll post", async () => {
+    const client = mockClient("urn:li:share:400");
+    await createPost(client, {
+      author: "urn:li:person:abc",
+      text: "What do you think?",
+      content: {
+        poll: {
+          question: "Favorite language?",
+          options: [{ text: "TypeScript" }, { text: "Python" }],
+          settings: { duration: "THREE_DAYS" },
+        },
+      },
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("content", {
+      poll: {
+        question: "Favorite language?",
+        options: [{ text: "TypeScript" }, { text: "Python" }],
+        settings: { duration: "THREE_DAYS" },
+      },
+    });
+  });
+
+  it("includes poll content with four options", async () => {
+    const client = mockClient("urn:li:share:401");
+    await createPost(client, {
+      author: "urn:li:person:abc",
+      text: "Pick one",
+      content: {
+        poll: {
+          question: "Best framework?",
+          options: [{ text: "React" }, { text: "Vue" }, { text: "Angular" }, { text: "Svelte" }],
+          settings: { duration: "ONE_WEEK" },
+        },
+      },
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("content", {
+      poll: {
+        question: "Best framework?",
+        options: [{ text: "React" }, { text: "Vue" }, { text: "Angular" }, { text: "Svelte" }],
+        settings: { duration: "ONE_WEEK" },
+      },
+    });
+  });
 });

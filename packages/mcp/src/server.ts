@@ -113,11 +113,20 @@ export function createMcpServer(): McpServer {
           .array(z.string())
           .optional()
           .describe("Array of local image file paths to upload and attach (minimum 2)"),
+        poll: z.string().optional().describe("Poll question text (creates a poll post)"),
+        poll_options: z
+          .array(z.string())
+          .optional()
+          .describe("Array of poll answer options (minimum 2, maximum 4; required when poll is set)"),
+        poll_duration: z
+          .enum(["ONE_DAY", "THREE_DAYS", "ONE_WEEK", "TWO_WEEKS"])
+          .optional()
+          .describe("How long the poll stays open (defaults to THREE_DAYS)"),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
     async (args) => {
-      const mediaFlags = [
+      const contentFlags = [
         args.image,
         args.video,
         args.document,
@@ -127,13 +136,14 @@ export function createMcpServer(): McpServer {
         args.video_file,
         args.document_file,
         args.image_files,
+        args.poll,
       ].filter((v) => v !== undefined);
-      if (mediaFlags.length > 1) {
+      if (contentFlags.length > 1) {
         return {
           content: [
             {
               type: "text" as const,
-              text: "Only one media option may be specified: image, video, document, article_url, images, image_file, video_file, document_file, or image_files",
+              text: "Only one content option may be specified: image, video, document, article_url, images, image_file, video_file, document_file, image_files, or poll",
             },
           ],
           isError: true,
@@ -157,6 +167,27 @@ export function createMcpServer(): McpServer {
           };
         }
         postContent = { multiImage: { images: args.images.map((id) => ({ id })) } };
+      } else if (args.poll !== undefined) {
+        const pollOptions = args.poll_options ?? [];
+        if (pollOptions.length < 2) {
+          return {
+            content: [{ type: "text" as const, text: "Poll posts require at least 2 poll_options" }],
+            isError: true,
+          };
+        }
+        if (pollOptions.length > 4) {
+          return {
+            content: [{ type: "text" as const, text: "Poll posts allow at most 4 poll_options" }],
+            isError: true,
+          };
+        }
+        postContent = {
+          poll: {
+            question: args.poll,
+            options: pollOptions.map((text) => ({ text })),
+            settings: { duration: args.poll_duration ?? "THREE_DAYS" },
+          },
+        };
       }
 
       const { config } = await resolveConfig({

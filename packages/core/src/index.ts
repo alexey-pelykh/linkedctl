@@ -59,6 +59,8 @@ export type {
   MediaContent,
   ArticleContent,
   MultiImageContent,
+  PollDuration,
+  PollContent,
 } from "./posts/types.js";
 export { initializeVideoUpload, uploadVideoChunk, finalizeVideoUpload, uploadVideo } from "./video/video-service.js";
 export type {
