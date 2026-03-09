@@ -129,6 +129,7 @@ export function createMcpServer(): McpServer {
           .enum(["ONE_DAY", "THREE_DAYS", "ONE_WEEK", "TWO_WEEKS"])
           .optional()
           .describe("How long the poll stays open (defaults to THREE_DAYS)"),
+        as_org: z.string().optional().describe("Organization ID to upload as (e.g. 12345)"),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
@@ -206,7 +207,13 @@ export function createMcpServer(): McpServer {
       const apiVersion = config.apiVersion ?? "";
       const client = new LinkedInClient({ accessToken, apiVersion });
 
-      const authorUrn = await getCurrentPersonUrn(client);
+      let authorUrn: string;
+      if (args.as_org !== undefined) {
+        await getOrganization(client, args.as_org);
+        authorUrn = `urn:li:organization:${args.as_org}`;
+      } else {
+        authorUrn = await getCurrentPersonUrn(client);
+      }
 
       // Handle file-based uploads if no URN-based content was resolved
       if (postContent === undefined) {
@@ -318,6 +325,7 @@ export function createMcpServer(): McpServer {
       description: "Upload a document to LinkedIn (PDF, DOCX, PPTX, DOC, PPT; max 100 MB). Returns the document URN.",
       inputSchema: {
         file: z.string().describe("Absolute path to the document file"),
+        as_org: z.string().optional().describe("Organization ID to upload as (e.g. 12345)"),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
@@ -352,7 +360,13 @@ export function createMcpServer(): McpServer {
       const apiVersion = config.apiVersion ?? "";
       const client = new LinkedInClient({ accessToken, apiVersion });
 
-      const ownerUrn = await getCurrentPersonUrn(client);
+      let ownerUrn: string;
+      if (args.as_org !== undefined) {
+        await getOrganization(client, args.as_org);
+        ownerUrn = `urn:li:organization:${args.as_org}`;
+      } else {
+        ownerUrn = await getCurrentPersonUrn(client);
+      }
       const data = new Uint8Array(await readFile(args.file));
 
       const documentUrn = await uploadDocument(client, { owner: ownerUrn, data });
