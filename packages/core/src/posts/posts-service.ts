@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import type { LinkedInClient } from "../http/linkedin-client.js";
-import type { PostContent, PostLifecycleState, PostVisibility } from "./types.js";
+import type { PostContent, PostData, PostLifecycleState, PostListResponse, PostVisibility } from "./types.js";
 
 /**
  * Options for creating a text-only LinkedIn post.
@@ -63,4 +63,79 @@ export async function createPost(client: LinkedInClient, options: CreatePostOpti
   }
 
   return client.create("/rest/posts", body);
+}
+
+/**
+ * URL-encode a URN for use in REST.li resource paths.
+ */
+function encodeUrn(urn: string): string {
+  return encodeURIComponent(urn);
+}
+
+/**
+ * Options for listing posts by author.
+ */
+export interface ListPostsOptions {
+  /** Author URN (e.g. `urn:li:person:abc123`). */
+  author: string;
+  /** Number of posts to return (default 10, max 100). */
+  count?: number | undefined;
+  /** Starting index for pagination (default 0). */
+  start?: number | undefined;
+}
+
+/**
+ * Options for updating a post.
+ */
+export interface UpdatePostOptions {
+  /** New post text content. */
+  text: string;
+}
+
+/**
+ * Fetch a single LinkedIn post by URN.
+ */
+export async function getPost(client: LinkedInClient, postUrn: string): Promise<PostData> {
+  return client.request<PostData>(`/rest/posts/${encodeUrn(postUrn)}`);
+}
+
+/**
+ * List posts by author with pagination.
+ */
+export async function listPosts(client: LinkedInClient, options: ListPostsOptions): Promise<PostListResponse> {
+  const count = options.count ?? 10;
+  const start = options.start ?? 0;
+  const author = encodeURIComponent(options.author);
+  return client.request<PostListResponse>(
+    `/rest/posts?q=author&author=${author}&count=${String(count)}&start=${String(start)}`,
+  );
+}
+
+/**
+ * Update the commentary text of an existing LinkedIn post.
+ */
+export async function updatePost(client: LinkedInClient, postUrn: string, options: UpdatePostOptions): Promise<void> {
+  await client.request<undefined>(`/rest/posts/${encodeUrn(postUrn)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-RestLi-Method": "PARTIAL_UPDATE",
+    },
+    body: JSON.stringify({
+      patch: {
+        $set: {
+          commentary: options.text,
+        },
+      },
+    }),
+  });
+}
+
+/**
+ * Delete a LinkedIn post by URN.
+ */
+export async function deletePost(client: LinkedInClient, postUrn: string): Promise<void> {
+  await client.request<undefined>(`/rest/posts/${encodeUrn(postUrn)}`, {
+    method: "DELETE",
+  });
 }

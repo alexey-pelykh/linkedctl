@@ -3,6 +3,10 @@
 
 import { Command, InvalidArgumentError, Option } from "commander";
 import { addMediaOptions, addPollOptions, createCommand, createPostAction } from "./create.js";
+import { getCommand } from "./get.js";
+import { listCommand } from "./list.js";
+import { updateCommand } from "./update.js";
+import { deleteCommand } from "./delete.js";
 
 export function postCommand(): Command {
   const cmd = new Command("post");
@@ -47,6 +51,10 @@ Examples:
   });
 
   cmd.addCommand(createCommand());
+  cmd.addCommand(getCommand());
+  cmd.addCommand(listCommand());
+  cmd.addCommand(updateCommand());
+  cmd.addCommand(deleteCommand());
 
   return cmd;
 }

@@ -2,12 +2,14 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { describe, expect, it, vi } from "vitest";
-import { createTextPost, createPost } from "./posts-service.js";
+import { createTextPost, createPost, getPost, listPosts, updatePost, deletePost } from "./posts-service.js";
 import type { LinkedInClient } from "../http/linkedin-client.js";
+import type { PostData, PostListResponse } from "./types.js";
 
 function mockClient(urn: string): LinkedInClient {
   return {
     create: vi.fn().mockResolvedValue(urn),
+    request: vi.fn(),
   } as unknown as LinkedInClient;
 }
 
@@ -307,6 +309,93 @@ describe("createPost", () => {
         options: [{ text: "React" }, { text: "Vue" }, { text: "Angular" }, { text: "Svelte" }],
         settings: { duration: "ONE_WEEK" },
       },
+    });
+  });
+});
+
+describe("getPost", () => {
+  it("calls client.request with URL-encoded URN", async () => {
+    const postData: PostData = {
+      id: "urn:li:share:123",
+      author: "urn:li:person:abc",
+      commentary: "Hello",
+      visibility: "PUBLIC",
+      lifecycleState: "PUBLISHED",
+      distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+      isReshareDisabledByAuthor: false,
+    };
+    const client = mockClient("");
+    vi.mocked(client.request).mockResolvedValue(postData);
+
+    const result = await getPost(client, "urn:li:share:123");
+
+    expect(client.request).toHaveBeenCalledWith("/rest/posts/urn%3Ali%3Ashare%3A123");
+    expect(result).toEqual(postData);
+  });
+});
+
+describe("listPosts", () => {
+  it("calls client.request with author query and default pagination", async () => {
+    const response: PostListResponse = {
+      elements: [],
+      paging: { count: 10, start: 0 },
+    };
+    const client = mockClient("");
+    vi.mocked(client.request).mockResolvedValue(response);
+
+    const result = await listPosts(client, { author: "urn:li:person:abc" });
+
+    expect(client.request).toHaveBeenCalledWith("/rest/posts?q=author&author=urn%3Ali%3Aperson%3Aabc&count=10&start=0");
+    expect(result).toEqual(response);
+  });
+
+  it("uses custom count and start values", async () => {
+    const response: PostListResponse = {
+      elements: [],
+      paging: { count: 5, start: 10 },
+    };
+    const client = mockClient("");
+    vi.mocked(client.request).mockResolvedValue(response);
+
+    await listPosts(client, { author: "urn:li:person:abc", count: 5, start: 10 });
+
+    expect(client.request).toHaveBeenCalledWith("/rest/posts?q=author&author=urn%3Ali%3Aperson%3Aabc&count=5&start=10");
+  });
+});
+
+describe("updatePost", () => {
+  it("sends PARTIAL_UPDATE with commentary patch", async () => {
+    const client = mockClient("");
+    vi.mocked(client.request).mockResolvedValue(undefined);
+
+    await updatePost(client, "urn:li:share:123", { text: "Updated text" });
+
+    expect(client.request).toHaveBeenCalledWith("/rest/posts/urn%3Ali%3Ashare%3A123", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-RestLi-Method": "PARTIAL_UPDATE",
+      },
+      body: JSON.stringify({
+        patch: {
+          $set: {
+            commentary: "Updated text",
+          },
+        },
+      }),
+    });
+  });
+});
+
+describe("deletePost", () => {
+  it("sends DELETE request with URL-encoded URN", async () => {
+    const client = mockClient("");
+    vi.mocked(client.request).mockResolvedValue(undefined);
+
+    await deletePost(client, "urn:li:share:123");
+
+    expect(client.request).toHaveBeenCalledWith("/rest/posts/urn%3Ali%3Ashare%3A123", {
+      method: "DELETE",
     });
   });
 });
