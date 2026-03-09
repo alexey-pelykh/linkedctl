@@ -25,6 +25,10 @@ vi.mock("@linkedctl/core", () => ({
   getUserInfo: vi.fn(),
   createTextPost: vi.fn(),
   createPost: vi.fn(),
+  createComment: vi.fn(),
+  listComments: vi.fn(),
+  getComment: vi.fn(),
+  deleteComment: vi.fn(),
   uploadImage: vi.fn(),
   uploadVideo: vi.fn(),
   uploadDocument: vi.fn(),
@@ -55,6 +59,10 @@ import {
   getCurrentPersonUrn,
   getUserInfo,
   createPost,
+  createComment,
+  listComments,
+  getComment,
+  deleteComment,
   uploadImage,
   uploadVideo,
   uploadDocument,
@@ -99,6 +107,10 @@ describe("createMcpServer", () => {
 
     expect(toolNames).toContain("whoami");
     expect(toolNames).toContain("post_create");
+    expect(toolNames).toContain("comment_create");
+    expect(toolNames).toContain("comment_list");
+    expect(toolNames).toContain("comment_get");
+    expect(toolNames).toContain("comment_delete");
     expect(toolNames).toContain("document_upload");
     expect(toolNames).toContain("reaction_create");
     expect(toolNames).toContain("reaction_list");
@@ -816,6 +828,173 @@ describe("createMcpServer", () => {
         },
       ]);
       expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("comment_create", () => {
+    it("creates a comment and returns the URN", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createComment).mockResolvedValue("urn:li:comment:(urn:li:activity:100,200)");
+
+      const result = await client.callTool({
+        name: "comment_create",
+        arguments: {
+          post_urn: "urn:li:share:123",
+          text: "Great post!",
+        },
+      });
+
+      expect(createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          actor: "urn:li:person:abc123",
+          object: "urn:li:share:123",
+          message: "Great post!",
+        }),
+      );
+      expect(result.content).toEqual([
+        { type: "text", text: "Comment created: urn:li:comment:(urn:li:activity:100,200)" },
+      ]);
+    });
+  });
+
+  describe("comment_list", () => {
+    it("lists comments on a post", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listComments).mockResolvedValue([
+        {
+          urn: "urn:li:comment:(urn:li:activity:100,200)",
+          actor: "urn:li:person:abc",
+          object: "urn:li:share:123",
+          message: "Great post!",
+          createdAt: "2024-11-14T22:13:20.000Z",
+        },
+      ]);
+
+      const result = await client.callTool({
+        name: "comment_list",
+        arguments: { post_urn: "urn:li:share:123" },
+      });
+
+      expect(listComments).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ object: "urn:li:share:123" }),
+      );
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Great post!"),
+        },
+      ]);
+    });
+
+    it("returns message when no comments exist", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listComments).mockResolvedValue([]);
+
+      const result = await client.callTool({
+        name: "comment_list",
+        arguments: { post_urn: "urn:li:share:123" },
+      });
+
+      expect(result.content).toEqual([{ type: "text", text: "No comments found." }]);
+    });
+  });
+
+  describe("comment_get", () => {
+    it("gets a comment by URN", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getComment).mockResolvedValue({
+        urn: "urn:li:comment:(urn:li:activity:100,200)",
+        actor: "urn:li:person:abc",
+        object: "urn:li:share:123",
+        message: "A comment",
+        createdAt: "2024-11-14T22:13:20.000Z",
+      });
+
+      const result = await client.callTool({
+        name: "comment_get",
+        arguments: { comment_urn: "urn:li:comment:(urn:li:activity:100,200)" },
+      });
+
+      expect(getComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          commentUrn: "urn:li:comment:(urn:li:activity:100,200)",
+        }),
+      );
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("A comment"),
+        },
+      ]);
+    });
+  });
+
+  describe("comment_delete", () => {
+    it("deletes a comment by URN", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(deleteComment).mockResolvedValue(undefined);
+
+      const result = await client.callTool({
+        name: "comment_delete",
+        arguments: { comment_urn: "urn:li:comment:(urn:li:activity:100,200)" },
+      });
+
+      expect(deleteComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          commentUrn: "urn:li:comment:(urn:li:activity:100,200)",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Comment deleted." }]);
     });
   });
 
