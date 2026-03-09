@@ -15,8 +15,20 @@ export function detectFormat(stream: { isTTY?: boolean }): OutputFormat {
 }
 
 /**
- * Resolve the effective output format: an explicit choice overrides TTY detection.
+ * Resolve the effective output format.
+ *
+ * Precedence: per-command `--format` > global `--json` > TTY auto-detection.
  */
-export function resolveFormat(explicit: OutputFormat | undefined, stream: { isTTY?: boolean }): OutputFormat {
-  return explicit ?? detectFormat(stream);
+export function resolveFormat(
+  explicit: OutputFormat | undefined,
+  stream: { isTTY?: boolean },
+  globalJson?: boolean,
+): OutputFormat {
+  if (explicit !== undefined) {
+    return explicit;
+  }
+  if (globalJson === true) {
+    return "json";
+  }
+  return detectFormat(stream);
 }

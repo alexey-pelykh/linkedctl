@@ -116,4 +116,51 @@ describe("whoami", () => {
     expect(parsed).not.toHaveProperty("given_name");
     expect(parsed).not.toHaveProperty("email_verified");
   });
+
+  it("outputs JSON when global --json is set", async () => {
+    const originalIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
+
+    try {
+      const { Command } = await import("commander");
+      const parent = new Command("linkedctl");
+      parent.enablePositionalOptions();
+      parent.option("--json", "force JSON output");
+      const cmd = whoamiCommand();
+      parent.addCommand(cmd);
+
+      await parent.parseAsync(["--json", "whoami"], { from: "user" });
+
+      expect(consoleSpy).toHaveBeenCalledOnce();
+      const output = consoleSpy.mock.calls[0]?.[0] as string;
+      const parsed = JSON.parse(output) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("name", "Jane Doe");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, writable: true });
+    }
+  });
+
+  it("per-command --format takes precedence over global --json", async () => {
+    const originalIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", { value: false, writable: true });
+
+    try {
+      const { Command } = await import("commander");
+      const parent = new Command("linkedctl");
+      parent.enablePositionalOptions();
+      parent.option("--json", "force JSON output");
+      const cmd = whoamiCommand();
+      parent.addCommand(cmd);
+
+      await parent.parseAsync(["--json", "whoami", "--format", "table"], { from: "user" });
+
+      expect(consoleSpy).toHaveBeenCalledOnce();
+      const output = consoleSpy.mock.calls[0]?.[0] as string;
+      // Table format uses aligned columns, not JSON
+      expect(() => JSON.parse(output)).toThrow();
+      expect(output).toContain("Jane Doe");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, writable: true });
+    }
+  });
 });
