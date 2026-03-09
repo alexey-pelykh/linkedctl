@@ -31,6 +31,15 @@ export function loginCommand(): Command {
   cmd.option("--port <number>", "local callback server port", String(DEFAULT_REDIRECT_PORT));
   cmd.option("--pkce", "use PKCE flow (requires LinkedIn to enable it for your app)");
 
+  cmd.addHelpText(
+    "after",
+    `
+Examples:
+  linkedctl auth login
+  linkedctl auth login --client-id <id> --client-secret <secret>
+  linkedctl auth login --profile work`,
+  );
+
   cmd.action(async (opts: { clientId?: string; clientSecret?: string; scope?: string; port: string; pkce?: true }) => {
     const program = cmd.parent?.parent;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
