@@ -58,6 +58,21 @@ export class LinkedInClient {
   }
 
   /**
+   * Invoke a REST.li action via POST and return the parsed JSON response.
+   *
+   * Used for endpoints like `/rest/documents?action=initializeUpload` that
+   * return a JSON body rather than a resource ID header.
+   */
+  async action<T>(path: string, body: unknown): Promise<T> {
+    const response = await this.sendRequest(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await response.json()) as T;
+  }
+
+  /**
    * Create a resource via POST and return the ID from the `x-restli-id`
    * response header (standard LinkedIn REST.li create pattern).
    */
@@ -80,7 +95,7 @@ export class LinkedInClient {
    * Used for LinkedIn media uploads where the upload URL is provided by
    * the initialize-upload response and is already fully qualified.
    */
-  async upload(url: string, data: Uint8Array, contentType: string): Promise<void> {
+  async upload(url: string, data: Uint8Array, contentType = "application/octet-stream"): Promise<void> {
     await this.sendRequest(url, {
       method: "PUT",
       headers: { "Content-Type": contentType },

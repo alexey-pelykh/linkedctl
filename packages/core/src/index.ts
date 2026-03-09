@@ -61,3 +61,6 @@ export type {
   FinalizeVideoUploadRequest,
   UploadVideoOptions,
 } from "./video/types.js";
+export { uploadDocument } from "./documents/documents-service.js";
+export { DOCUMENT_EXTENSIONS, DOCUMENT_MAX_SIZE_BYTES } from "./documents/types.js";
+export type { UploadDocumentOptions, InitializeDocumentUploadResponse } from "./documents/types.js";
