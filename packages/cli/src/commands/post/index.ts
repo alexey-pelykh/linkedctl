@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command, InvalidArgumentError, Option } from "commander";
-import { createCommand, createPostAction } from "./create.js";
+import { addMediaOptions, createCommand, createPostAction } from "./create.js";
 
 export function postCommand(): Command {
   const cmd = new Command("post");
@@ -25,6 +25,7 @@ export function postCommand(): Command {
       })
       .default("PUBLIC"),
   );
+  addMediaOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
   cmd.addHelpText(
@@ -33,6 +34,7 @@ export function postCommand(): Command {
 Examples:
   linkedctl post "Hello from LinkedCtl!"
   linkedctl post --text "Hello" --visibility CONNECTIONS
+  linkedctl post --text "Check this out" --image urn:li:image:C5608AQ...
   echo "Hello" | linkedctl post`,
   );
 

@@ -50,9 +50,9 @@ export { getCurrentPersonUrn } from "./userinfo/userinfo-service.js";
 export { uploadImage } from "./media/media-service.js";
 export type { UploadImageOptions } from "./media/media-service.js";
 export { SUPPORTED_IMAGE_TYPES } from "./media/types.js";
-export { createTextPost } from "./posts/posts-service.js";
-export type { CreateTextPostOptions } from "./posts/posts-service.js";
-export type { PostVisibility } from "./posts/types.js";
+export { createTextPost, createPost } from "./posts/posts-service.js";
+export type { CreateTextPostOptions, CreatePostOptions } from "./posts/posts-service.js";
+export type { PostVisibility, PostContent, MediaContent, ArticleContent, MultiImageContent } from "./posts/types.js";
 export { initializeVideoUpload, uploadVideoChunk, finalizeVideoUpload, uploadVideo } from "./video/video-service.js";
 export type {
   InitializeVideoUploadRequest,

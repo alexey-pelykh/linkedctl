@@ -21,6 +21,7 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
     }),
     getCurrentPersonUrn: vi.fn().mockResolvedValue("urn:li:person:person123"),
     createTextPost: vi.fn().mockResolvedValue("urn:li:share:111222333"),
+    createPost: vi.fn().mockResolvedValue("urn:li:share:111222333"),
   };
 });
 
@@ -39,7 +40,7 @@ describe("post create", () => {
       },
       warnings: [],
     });
-    vi.mocked(coreMock.createTextPost).mockResolvedValue("urn:li:share:111222333");
+    vi.mocked(coreMock.createPost).mockResolvedValue("urn:li:share:111222333");
     vi.mocked(coreMock.getCurrentPersonUrn).mockResolvedValue("urn:li:person:person123");
   });
 
@@ -51,7 +52,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello LinkedIn"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         author: "urn:li:person:person123",
@@ -66,7 +67,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "Hello from shorthand"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         text: "Hello from shorthand",
@@ -78,7 +79,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "--text", "Hello from text option"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         text: "Hello from text option",
@@ -90,7 +91,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "positional", "--text", "from option"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         text: "from option",
@@ -102,7 +103,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "--text", "Private", "--visibility", "CONNECTIONS"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         visibility: "CONNECTIONS",
@@ -123,7 +124,7 @@ describe("post create", () => {
       "CONNECTIONS",
     ]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         visibility: "CONNECTIONS",
@@ -135,7 +136,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Public post"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         visibility: "PUBLIC",
@@ -175,7 +176,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--visibility", "connections"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         visibility: "CONNECTIONS",
@@ -187,7 +188,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Hello", "--visibility", "Public"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         visibility: "PUBLIC",
@@ -199,7 +200,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "--text", "Hello", "--visibility", "public"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         visibility: "PUBLIC",
@@ -247,7 +248,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "create", "Hello positional"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         text: "Hello positional",
@@ -259,7 +260,7 @@ describe("post create", () => {
     const program = createProgram();
     await program.parseAsync(["node", "linkedctl", "post", "create", "positional", "--text", "from option"]);
 
-    expect(coreMock.createTextPost).toHaveBeenCalledWith(
+    expect(coreMock.createPost).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         text: "from option",
@@ -269,7 +270,7 @@ describe("post create", () => {
 
   it("wraps API errors with actionable message", async () => {
     const { LinkedInApiError } = await import("@linkedctl/core");
-    vi.mocked(coreMock.createTextPost).mockRejectedValueOnce(new LinkedInApiError("Forbidden", 403));
+    vi.mocked(coreMock.createPost).mockRejectedValueOnce(new LinkedInApiError("Forbidden", 403));
 
     const program = createProgram();
     program.exitOverride();
@@ -297,7 +298,7 @@ describe("post create", () => {
       const program = createProgram();
       await program.parseAsync(["node", "linkedctl", "post", "create", "--text-file", filePath]);
 
-      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect(coreMock.createPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           text: "Hello from file",
@@ -312,7 +313,7 @@ describe("post create", () => {
       const program = createProgram();
       await program.parseAsync(["node", "linkedctl", "post", "--text-file", filePath]);
 
-      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect(coreMock.createPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           text: "Hello from file shorthand",
@@ -327,7 +328,7 @@ describe("post create", () => {
       const program = createProgram();
       await program.parseAsync(["node", "linkedctl", "post", "create", "--text-file", filePath]);
 
-      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect(coreMock.createPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           text: "Hello trimmed",
@@ -351,7 +352,7 @@ describe("post create", () => {
         filePath,
       ]);
 
-      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect(coreMock.createPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           text: "from option",
@@ -366,7 +367,7 @@ describe("post create", () => {
       const program = createProgram();
       await program.parseAsync(["node", "linkedctl", "post", "--text", "from option", "--text-file", filePath]);
 
-      expect(coreMock.createTextPost).toHaveBeenCalledWith(
+      expect(coreMock.createPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           text: "from option",
@@ -383,6 +384,185 @@ describe("post create", () => {
       await expect(
         program.parseAsync(["node", "linkedctl", "post", "create", "--text-file", filePath]),
       ).rejects.toThrow(/ENOENT/);
+    });
+  });
+
+  describe("media options", () => {
+    it("creates a post with --image option", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Check this",
+        "--image",
+        "urn:li:image:C5608AQ123",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Check this",
+          content: { media: { id: "urn:li:image:C5608AQ123" } },
+        }),
+      );
+    });
+
+    it("creates a post with --video option", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Watch this",
+        "--video",
+        "urn:li:video:D5608AQ456",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Watch this",
+          content: { media: { id: "urn:li:video:D5608AQ456" } },
+        }),
+      );
+    });
+
+    it("creates a post with --document option", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Read this",
+        "--document",
+        "urn:li:document:D789",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Read this",
+          content: { media: { id: "urn:li:document:D789" } },
+        }),
+      );
+    });
+
+    it("creates a post with --article-url option", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Great read",
+        "--article-url",
+        "https://example.com/article",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Great read",
+          content: { article: { source: "https://example.com/article" } },
+        }),
+      );
+    });
+
+    it("creates a post with --images option (multi-image)", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Gallery",
+        "--images",
+        "urn:li:image:A1,urn:li:image:A2,urn:li:image:A3",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Gallery",
+          content: {
+            multiImage: {
+              images: [{ id: "urn:li:image:A1" }, { id: "urn:li:image:A2" }, { id: "urn:li:image:A3" }],
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects --images with fewer than 2 URNs", async () => {
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Single", "--images", "urn:li:image:A1"]),
+      ).rejects.toThrow(/at least 2/);
+    });
+
+    it("rejects multiple media options", async () => {
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync([
+          "node",
+          "linkedctl",
+          "post",
+          "create",
+          "--text",
+          "Both",
+          "--image",
+          "urn:li:image:X",
+          "--video",
+          "urn:li:video:Y",
+        ]),
+      ).rejects.toThrow(/Only one media option/);
+    });
+
+    it("creates a post with --image on post shorthand", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "--text",
+        "Shorthand image",
+        "--image",
+        "urn:li:image:S1",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Shorthand image",
+          content: { media: { id: "urn:li:image:S1" } },
+        }),
+      );
+    });
+
+    it("passes no content when no media option is given", async () => {
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Plain text"]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Plain text",
+          content: undefined,
+        }),
+      );
     });
   });
 });

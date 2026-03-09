@@ -24,6 +24,7 @@ vi.mock("@linkedctl/core", () => ({
   getCurrentPersonUrn: vi.fn(),
   getUserInfo: vi.fn(),
   createTextPost: vi.fn(),
+  createPost: vi.fn(),
   uploadDocument: vi.fn(),
   DOCUMENT_EXTENSIONS: [".pdf", ".docx", ".pptx", ".doc", ".ppt"],
   DOCUMENT_MAX_SIZE_BYTES: 100 * 1024 * 1024,
@@ -41,7 +42,7 @@ import {
   LinkedInAuthError,
   getCurrentPersonUrn,
   getUserInfo,
-  createTextPost,
+  createPost,
   uploadDocument,
   loadConfigFile,
   validateConfig,
@@ -192,7 +193,7 @@ describe("createMcpServer", () => {
   });
 
   describe("post_create", () => {
-    it("creates a post and returns the URN", async () => {
+    it("creates a text-only post and returns the URN", async () => {
       vi.mocked(resolveConfig).mockResolvedValue({
         config: {
           oauth: { accessToken: "test-token" },
@@ -204,7 +205,7 @@ describe("createMcpServer", () => {
         return Object.create(null);
       } as unknown as typeof LinkedInClient);
       vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
-      vi.mocked(createTextPost).mockResolvedValue("urn:li:share:post456");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:post456");
 
       const result = await client.callTool({
         name: "post_create",
@@ -215,12 +216,13 @@ describe("createMcpServer", () => {
         profile: undefined,
         requiredScopes: ["openid", "profile", "email", "w_member_social"],
       });
-      expect(createTextPost).toHaveBeenCalledWith(
+      expect(createPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           author: "urn:li:person:abc123",
           text: "Hello LinkedIn",
           visibility: "PUBLIC",
+          content: undefined,
         }),
       );
       expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:post456" }]);
@@ -238,7 +240,7 @@ describe("createMcpServer", () => {
         return Object.create(null);
       } as unknown as typeof LinkedInClient);
       vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
-      vi.mocked(createTextPost).mockResolvedValue("urn:li:share:post789");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:post789");
 
       const result = await client.callTool({
         name: "post_create",
@@ -253,13 +255,209 @@ describe("createMcpServer", () => {
         profile: "work",
         requiredScopes: ["openid", "profile", "email", "w_member_social"],
       });
-      expect(createTextPost).toHaveBeenCalledWith(
+      expect(createPost).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           visibility: "CONNECTIONS",
         }),
       );
       expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:post789" }]);
+    });
+
+    it("creates a post with image attachment", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:img001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Check this image",
+          image: "urn:li:image:C5608AQ123",
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: { media: { id: "urn:li:image:C5608AQ123" } },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:img001" }]);
+    });
+
+    it("creates a post with video attachment", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:vid001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Watch this video",
+          video: "urn:li:video:D5608AQ456",
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: { media: { id: "urn:li:video:D5608AQ456" } },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:vid001" }]);
+    });
+
+    it("creates a post with document attachment", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:doc001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Read this document",
+          document: "urn:li:document:D789",
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: { media: { id: "urn:li:document:D789" } },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:doc001" }]);
+    });
+
+    it("creates a post with article URL attachment", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:art001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Great article",
+          article_url: "https://example.com/article",
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: { article: { source: "https://example.com/article" } },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:art001" }]);
+    });
+
+    it("creates a multi-image post", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:multi001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Photo gallery",
+          images: ["urn:li:image:A1", "urn:li:image:A2", "urn:li:image:A3"],
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: {
+            multiImage: {
+              images: [{ id: "urn:li:image:A1" }, { id: "urn:li:image:A2" }, { id: "urn:li:image:A3" }],
+            },
+          },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:multi001" }]);
+    });
+
+    it("returns error when multiple media options are specified", async () => {
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Conflicting",
+          image: "urn:li:image:X",
+          video: "urn:li:video:Y",
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Only one media option"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when images array has fewer than 2 items", async () => {
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Single image in array",
+          images: ["urn:li:image:A1"],
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("at least 2"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
     });
   });
 
