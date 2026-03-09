@@ -148,7 +148,7 @@ describe("auth login", () => {
           "token-expires-at": "2025-01-01T00:00:00.000Z",
           scope: "openid profile",
         },
-        "api-version": "202501",
+        "api-version": "202603",
       },
       path: "/some/path.yaml",
     });
@@ -184,7 +184,7 @@ describe("auth login", () => {
           "token-expires-at": "2025-01-01T00:00:00.000Z",
           scope: "openid profile",
         },
-        "api-version": "202501",
+        "api-version": "202603",
       },
       path: "/some/path.yaml",
     });
@@ -212,7 +212,7 @@ describe("auth login", () => {
           "client-secret": "profile-client-secret",
           scope: "openid profile",
         },
-        "api-version": "202501",
+        "api-version": "202603",
       },
       path: "/some/path.yaml",
     });
@@ -324,7 +324,7 @@ describe("auth login", () => {
           "client-secret": "my-secret",
           scope: "openid profile",
         },
-        "api-version": "202501",
+        "api-version": "202603",
       },
       path: "/some/path.yaml",
     });

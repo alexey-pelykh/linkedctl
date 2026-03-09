@@ -11,7 +11,7 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
     resolveConfig: vi.fn().mockResolvedValue({
       config: {
         oauth: { accessToken: "test-token" },
-        apiVersion: "202501",
+        apiVersion: "202603",
       },
       warnings: [],
     }),
@@ -31,7 +31,7 @@ describe("post create", () => {
     vi.mocked(coreMock.resolveConfig).mockResolvedValue({
       config: {
         oauth: { accessToken: "test-token" },
-        apiVersion: "202501",
+        apiVersion: "202603",
       },
       warnings: [],
     });

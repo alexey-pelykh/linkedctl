@@ -6,7 +6,7 @@ import { applyEnvOverlay } from "./env.js";
 
 describe("applyEnvOverlay", () => {
   it("returns config unchanged when no env vars are set", () => {
-    const config = { apiVersion: "202501", oauth: { accessToken: "tok" } };
+    const config = { apiVersion: "202603", oauth: { accessToken: "tok" } };
     const result = applyEnvOverlay(config, { env: {} });
     expect(result).toEqual(config);
   });
@@ -20,7 +20,7 @@ describe("applyEnvOverlay", () => {
   });
 
   it("overlays api-version from env", () => {
-    const config = { apiVersion: "202501" };
+    const config = { apiVersion: "202603" };
     const result = applyEnvOverlay(config, {
       env: { LINKEDCTL_API_VERSION: "202502" },
     });
@@ -57,7 +57,7 @@ describe("applyEnvOverlay", () => {
 
   it("preserves file values when env vars are not set", () => {
     const config = {
-      apiVersion: "202501",
+      apiVersion: "202603",
       oauth: { accessToken: "file-tok", clientId: "file-cid" },
     };
     const result = applyEnvOverlay(config, {
@@ -65,7 +65,7 @@ describe("applyEnvOverlay", () => {
     });
     expect(result.oauth?.accessToken).toBe("env-tok");
     expect(result.oauth?.clientId).toBe("file-cid");
-    expect(result.apiVersion).toBe("202501");
+    expect(result.apiVersion).toBe("202603");
   });
 
   it("overlays scope from env", () => {
@@ -77,11 +77,11 @@ describe("applyEnvOverlay", () => {
   });
 
   it("does not mutate the original config", () => {
-    const config = { apiVersion: "202501", oauth: { accessToken: "original" } };
+    const config = { apiVersion: "202603", oauth: { accessToken: "original" } };
     applyEnvOverlay(config, {
       env: { LINKEDCTL_ACCESS_TOKEN: "new", LINKEDCTL_API_VERSION: "202502" },
     });
-    expect(config.apiVersion).toBe("202501");
+    expect(config.apiVersion).toBe("202603");
     expect(config.oauth.accessToken).toBe("original");
   });
 });

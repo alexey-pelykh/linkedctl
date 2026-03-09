@@ -27,7 +27,13 @@ export type {
 } from "./config/index.js";
 export { getTokenExpiry } from "./auth/token-introspection.js";
 export type { TokenExpiry } from "./auth/token-introspection.js";
-export { LinkedInApiError, LinkedInAuthError, LinkedInRateLimitError, LinkedInServerError } from "./http/errors.js";
+export {
+  LinkedInApiError,
+  LinkedInAuthError,
+  LinkedInRateLimitError,
+  LinkedInServerError,
+  LinkedInUpgradeRequiredError,
+} from "./http/errors.js";
 export { LinkedInClient } from "./http/linkedin-client.js";
 export type { LinkedInClientOptions } from "./http/linkedin-client.js";
 export {
