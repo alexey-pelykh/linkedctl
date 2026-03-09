@@ -6,7 +6,9 @@ import { z } from "zod";
 import {
   resolveConfig,
   LinkedInClient,
+  LinkedInAuthError,
   getCurrentPersonUrn,
+  getUserInfo,
   createTextPost,
   loadConfigFile,
   validateConfig,
@@ -23,6 +25,53 @@ export function createMcpServer(): McpServer {
     name: "linkedctl",
     version: "0.0.0",
   });
+
+  server.registerTool(
+    "whoami",
+    {
+      title: "Who Am I",
+      description: "Show the current LinkedIn user's name, email, and profile picture URL",
+      inputSchema: {
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      let userInfo;
+      try {
+        userInfo = await getUserInfo(client);
+      } catch (error: unknown) {
+        if (error instanceof LinkedInAuthError) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        throw error;
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Name: ${userInfo.name}\nEmail: ${userInfo.email}\nPicture: ${userInfo.picture}`,
+          },
+        ],
+      };
+    },
+  );
 
   server.registerTool(
     "post_create",
