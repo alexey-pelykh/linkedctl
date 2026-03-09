@@ -18,7 +18,7 @@ const BACKOFF_MAX_MS = 30_000;
 export interface LinkedInClientOptions {
   /** OAuth2 access token. */
   accessToken: string;
-  /** LinkedIn API version identifier (e.g. "202603"). */
+  /** LinkedIn API version identifier (e.g. "202601"). */
   apiVersion: string;
   /** Base URL for the LinkedIn API. */
   baseUrl?: string | undefined;

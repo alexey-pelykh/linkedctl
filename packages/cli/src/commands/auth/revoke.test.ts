@@ -35,7 +35,7 @@ describe("auth revoke", () => {
           "client-id": "my-client-id",
           "client-secret": "my-client-secret",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -59,7 +59,7 @@ describe("auth revoke", () => {
           "client-id": "my-client-id",
           "client-secret": "my-client-secret",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -78,7 +78,7 @@ describe("auth revoke", () => {
         oauth: {
           "access-token": "secret-token",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -100,7 +100,7 @@ describe("auth revoke", () => {
           "client-id": "cid",
           "client-secret": "csecret",
         },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -116,7 +116,7 @@ describe("auth revoke", () => {
 
   it("clears credentials when no OAuth section exists", async () => {
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
-      raw: { "api-version": "202603" },
+      raw: { "api-version": "202601" },
       path: "/some/path.yaml",
     });
 

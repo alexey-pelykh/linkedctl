@@ -30,7 +30,7 @@ describe("whoami", () => {
     resolveConfigSpy = vi.spyOn(core, "resolveConfig").mockResolvedValue({
       config: {
         oauth: { accessToken: "test-token" },
-        apiVersion: "202603",
+        apiVersion: "202601",
       },
       warnings: [],
     });

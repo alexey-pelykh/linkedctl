@@ -38,11 +38,11 @@ describe("loadConfigFile", () => {
   it("loads profile-specific file from ~/.linkedctl/{profile}.yaml", async () => {
     const profileDir = join(dir, CONFIG_DIR);
     await mkdir(profileDir, { recursive: true });
-    await writeFile(join(profileDir, "work.yaml"), 'api-version: "202603"\n');
+    await writeFile(join(profileDir, "work.yaml"), 'api-version: "202601"\n');
 
     const result = await loadConfigFile({ profile: "work", home: dir });
     expect(result.path).toBe(join(profileDir, "work.yaml"));
-    expect(result.raw).toEqual({ "api-version": "202603" });
+    expect(result.raw).toEqual({ "api-version": "202601" });
   });
 
   it("loads CWD .linkedctl.yaml before home", async () => {
@@ -93,7 +93,7 @@ describe("loadConfigFile", () => {
   client-id: "cid"
   client-secret: "csecret"
   access-token: "tok"
-api-version: "202603"
+api-version: "202601"
 `,
     );
 
@@ -104,7 +104,7 @@ api-version: "202603"
         "client-secret": "csecret",
         "access-token": "tok",
       },
-      "api-version": "202603",
+      "api-version": "202601",
     });
   });
 });

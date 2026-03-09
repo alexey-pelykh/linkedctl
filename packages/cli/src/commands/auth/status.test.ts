@@ -51,7 +51,7 @@ describe("auth status", () => {
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
       raw: {
         oauth: { "access-token": "" },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -71,7 +71,7 @@ describe("auth status", () => {
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
       raw: {
         oauth: { "access-token": token },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -91,7 +91,7 @@ describe("auth status", () => {
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
       raw: {
         oauth: { "access-token": token },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -108,7 +108,7 @@ describe("auth status", () => {
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
       raw: {
         oauth: { "access-token": "AQVh7cKZopaque" },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });

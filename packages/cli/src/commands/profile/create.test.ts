@@ -78,7 +78,7 @@ describe("profile create", () => {
 
   it("throws when profile already exists", async () => {
     loadConfigFileSpy.mockResolvedValue({
-      raw: { "api-version": "202603" },
+      raw: { "api-version": "202601" },
       path: "/mock/home/.linkedctl/personal.yaml",
     });
 
@@ -97,7 +97,7 @@ describe("profile create", () => {
 
   it("does not write files when profile already exists", async () => {
     loadConfigFileSpy.mockResolvedValue({
-      raw: { "api-version": "202603" },
+      raw: { "api-version": "202601" },
       path: "/mock/home/.linkedctl/personal.yaml",
     });
 

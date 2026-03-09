@@ -27,7 +27,7 @@ describe("auth logout", () => {
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
       raw: {
         oauth: { "access-token": "secret-token" },
-        "api-version": "202603",
+        "api-version": "202601",
       },
       path: "/some/path.yaml",
     });
@@ -41,7 +41,7 @@ describe("auth logout", () => {
 
   it("throws when no OAuth credentials configured", async () => {
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
-      raw: { "api-version": "202603" },
+      raw: { "api-version": "202601" },
       path: "/some/path.yaml",
     });
 

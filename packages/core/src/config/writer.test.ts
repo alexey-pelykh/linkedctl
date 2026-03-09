@@ -51,7 +51,7 @@ describe("saveOAuthTokens", () => {
       `oauth:
   client-id: "cid"
   client-secret: "csecret"
-api-version: "202603"
+api-version: "202601"
 `,
     );
 
@@ -61,7 +61,7 @@ api-version: "202603"
     const parsed = parse(content) as Record<string, unknown>;
     expect((parsed["oauth"] as Record<string, unknown>)["client-id"]).toBe("cid");
     expect((parsed["oauth"] as Record<string, unknown>)["access-token"]).toBe("new-tok");
-    expect(parsed["api-version"]).toBe("202603");
+    expect(parsed["api-version"]).toBe("202601");
   });
 
   it("writes to profile-specific path", async () => {
@@ -174,11 +174,11 @@ describe("saveApiVersion", () => {
   });
 
   it("creates config file with api-version", async () => {
-    await saveApiVersion("202603", { home: dir, cwd: dir });
+    await saveApiVersion("202601", { home: dir, cwd: dir });
 
     const content = await readFile(join(dir, ".linkedctl.yaml"), "utf-8");
     const parsed = parse(content) as Record<string, unknown>;
-    expect(parsed["api-version"]).toBe("202603");
+    expect(parsed["api-version"]).toBe("202601");
   });
 
   it("preserves existing fields when saving api-version", async () => {
@@ -191,11 +191,11 @@ describe("saveApiVersion", () => {
 `,
     );
 
-    await saveApiVersion("202603", { home: dir, cwd: dir });
+    await saveApiVersion("202601", { home: dir, cwd: dir });
 
     const content = await readFile(join(dir, ".linkedctl.yaml"), "utf-8");
     const parsed = parse(content) as Record<string, unknown>;
-    expect(parsed["api-version"]).toBe("202603");
+    expect(parsed["api-version"]).toBe("202601");
     expect((parsed["oauth"] as Record<string, unknown>)["client-id"]).toBe("cid");
   });
 });
@@ -221,7 +221,7 @@ describe("clearOAuthTokens", () => {
   access-token: "tok"
   refresh-token: "rtok"
   token-expires-at: "2026-05-01T00:00:00Z"
-api-version: "202603"
+api-version: "202601"
 `,
     );
 
@@ -235,18 +235,18 @@ api-version: "202603"
     expect(oauth["access-token"]).toBeUndefined();
     expect(oauth["refresh-token"]).toBeUndefined();
     expect(oauth["token-expires-at"]).toBeUndefined();
-    expect(parsed["api-version"]).toBe("202603");
+    expect(parsed["api-version"]).toBe("202601");
   });
 
   it("handles config with no oauth section", async () => {
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, ".linkedctl.yaml"), 'api-version: "202603"\n');
+    await writeFile(join(dir, ".linkedctl.yaml"), 'api-version: "202601"\n');
 
     await clearOAuthTokens({ home: dir, cwd: dir });
 
     const content = await readFile(join(dir, ".linkedctl.yaml"), "utf-8");
     const parsed = parse(content) as Record<string, unknown>;
-    expect(parsed["api-version"]).toBe("202603");
+    expect(parsed["api-version"]).toBe("202601");
   });
 
   it("clears tokens from profile-specific file", async () => {
