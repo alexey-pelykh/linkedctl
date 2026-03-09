@@ -16,16 +16,20 @@ import {
   uploadImage,
   uploadVideo,
   uploadDocument,
+  createReaction,
+  listReactions,
+  deleteReaction,
   SUPPORTED_IMAGE_TYPES,
   DOCUMENT_EXTENSIONS,
   DOCUMENT_MAX_SIZE_BYTES,
+  REACTION_TYPES,
   loadConfigFile,
   validateConfig,
   getTokenExpiry,
   clearOAuthTokens,
   revokeAccessToken,
 } from "@linkedctl/core";
-import type { PostContent, PostLifecycleState } from "@linkedctl/core";
+import type { PostContent, PostLifecycleState, ReactionType } from "@linkedctl/core";
 
 /**
  * Create and configure the LinkedCtl MCP server with all tools registered.
@@ -436,6 +440,149 @@ export function createMcpServer(): McpServer {
       return {
         content: [{ type: "text" as const, text: lines.join("\n") }],
       };
+    },
+  );
+
+  server.registerTool(
+    "reaction_create",
+    {
+      title: "Create Reaction",
+      description:
+        "Add a reaction to a LinkedIn post. Supports LIKE (default), PRAISE, EMPATHY, INTEREST, APPRECIATION, ENTERTAINMENT.",
+      inputSchema: {
+        entity_urn: z.string().describe("Entity URN to react to (e.g. urn:li:share:abc123)"),
+        reaction_type: z
+          .enum(REACTION_TYPES as unknown as [string, ...string[]])
+          .optional()
+          .describe("Type of reaction (defaults to LIKE)"),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      try {
+        const reactionUrn = await createReaction(client, {
+          entity: args.entity_urn,
+          reactionType: (args.reaction_type as ReactionType | undefined) ?? "LIKE",
+        });
+
+        return {
+          content: [{ type: "text" as const, text: `Reaction created: ${reactionUrn}` }],
+        };
+      } catch (error: unknown) {
+        if (error instanceof LinkedInAuthError) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        throw error;
+      }
+    },
+  );
+
+  server.registerTool(
+    "reaction_list",
+    {
+      title: "List Reactions",
+      description: "List reactions on a LinkedIn post",
+      inputSchema: {
+        entity_urn: z.string().describe("Entity URN to list reactions for (e.g. urn:li:share:abc123)"),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      try {
+        const reactions = await listReactions(client, { entity: args.entity_urn });
+
+        if (reactions.length === 0) {
+          return {
+            content: [{ type: "text" as const, text: "No reactions found" }],
+          };
+        }
+
+        const lines = reactions.map((r) => `${r.reactionType} by ${r.actor} at ${new Date(r.createdAt).toISOString()}`);
+        return {
+          content: [{ type: "text" as const, text: lines.join("\n") }],
+        };
+      } catch (error: unknown) {
+        if (error instanceof LinkedInAuthError) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        throw error;
+      }
+    },
+  );
+
+  server.registerTool(
+    "reaction_delete",
+    {
+      title: "Delete Reaction",
+      description: "Remove your reaction from a LinkedIn post",
+      inputSchema: {
+        entity_urn: z.string().describe("Entity URN to remove reaction from (e.g. urn:li:share:abc123)"),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      const actorUrn = await getCurrentPersonUrn(client);
+
+      try {
+        await deleteReaction(client, { entity: args.entity_urn, actor: actorUrn });
+
+        return {
+          content: [{ type: "text" as const, text: "Reaction deleted" }],
+        };
+      } catch (error: unknown) {
+        if (error instanceof LinkedInAuthError) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        throw error;
+      }
     },
   );
 

@@ -90,6 +90,13 @@ export class LinkedInClient {
   }
 
   /**
+   * Delete a resource via DELETE (standard LinkedIn REST.li delete pattern).
+   */
+  async delete(path: string): Promise<void> {
+    await this.sendRequest(path, { method: "DELETE" });
+  }
+
+  /**
    * Upload binary data via PUT to an absolute URL.
    *
    * Used for LinkedIn media uploads where the upload URL is provided by
