@@ -10,8 +10,9 @@ export function postCommand(): Command {
 
   cmd.enablePositionalOptions();
 
-  cmd.argument("[text]", "shorthand: create a post with the given text (text > stdin)");
-  cmd.option("--text <text>", "text content of the post (takes precedence over positional argument)");
+  cmd.argument("[text]", "shorthand: create a post with the given text (text > text-file > stdin)");
+  cmd.option("--text <text>", "text content of the post (takes precedence over --text-file and positional argument)");
+  cmd.option("--text-file <path>", "read post text from a UTF-8 file");
   cmd.addOption(
     new Option("--visibility <visibility>", "post visibility (PUBLIC or CONNECTIONS)")
       .choices(["PUBLIC", "CONNECTIONS"])

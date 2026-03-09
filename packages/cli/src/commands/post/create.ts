@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
+import { readFile } from "node:fs/promises";
+
 import { Command, InvalidArgumentError, Option } from "commander";
 import { resolveConfig, LinkedInClient, getCurrentPersonUrn, createTextPost, LinkedInApiError } from "@linkedctl/core";
 import type { PostVisibility } from "@linkedctl/core";
@@ -10,18 +12,31 @@ import { readStdin } from "./stdin.js";
 
 interface CreateOpts {
   text?: string | undefined;
+  textFile?: string | undefined;
   visibility?: string | undefined;
   format?: string | undefined;
 }
 
 /**
- * Resolve the post text from --text option, positional argument, or stdin.
+ * Resolve the post text from --text option, --text-file, positional argument, or stdin.
  *
- * Precedence: --text > positional argument > stdin.
+ * Precedence: --text > --text-file > positional argument > stdin.
  */
-async function resolveText(textOpt: string | undefined, textArg: string | undefined): Promise<string> {
+async function resolveText(
+  textOpt: string | undefined,
+  textFileOpt: string | undefined,
+  textArg: string | undefined,
+): Promise<string> {
   if (textOpt !== undefined && textOpt !== "") {
     return textOpt;
+  }
+
+  if (textFileOpt !== undefined && textFileOpt !== "") {
+    const content = await readFile(textFileOpt, "utf-8");
+    const trimmed = content.trim();
+    if (trimmed !== "") {
+      return trimmed;
+    }
   }
 
   if (textArg !== undefined && textArg !== "") {
@@ -35,14 +50,16 @@ async function resolveText(textOpt: string | undefined, textArg: string | undefi
     }
   }
 
-  throw new Error('No text provided. Use --text "message", pass text as an argument, or pipe text via stdin.');
+  throw new Error(
+    'No text provided. Use --text "message", --text-file <path>, pass text as an argument, or pipe text via stdin.',
+  );
 }
 
 /**
  * Shared action handler for creating a text post.
  */
 export async function createPostAction(textArg: string | undefined, opts: CreateOpts, cmd: Command): Promise<void> {
-  const text = await resolveText(opts.text, textArg);
+  const text = await resolveText(opts.text, opts.textFile, textArg);
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
 
   const { config } = await resolveConfig({
@@ -78,9 +95,10 @@ export async function createPostAction(textArg: string | undefined, opts: Create
 
 export function createCommand(): Command {
   const cmd = new Command("create");
-  cmd.description("Create a text post on LinkedIn (text: --text > positional > stdin)");
+  cmd.description("Create a text post on LinkedIn (text: --text > --text-file > positional > stdin)");
   cmd.argument("[text]", "text content of the post");
-  cmd.option("--text <text>", "text content of the post (takes precedence over positional argument)");
+  cmd.option("--text <text>", "text content of the post (takes precedence over --text-file and positional argument)");
+  cmd.option("--text-file <path>", "read post text from a UTF-8 file");
   cmd.addOption(
     new Option("--visibility <visibility>", "post visibility (PUBLIC or CONNECTIONS)")
       .choices(["PUBLIC", "CONNECTIONS"])
