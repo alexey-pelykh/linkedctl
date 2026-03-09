@@ -53,3 +53,11 @@ export { SUPPORTED_IMAGE_TYPES } from "./media/types.js";
 export { createTextPost } from "./posts/posts-service.js";
 export type { CreateTextPostOptions } from "./posts/posts-service.js";
 export type { PostVisibility } from "./posts/types.js";
+export { initializeVideoUpload, uploadVideoChunk, finalizeVideoUpload, uploadVideo } from "./video/video-service.js";
+export type {
+  InitializeVideoUploadRequest,
+  InitializeVideoUploadResponse,
+  VideoUploadInstruction,
+  FinalizeVideoUploadRequest,
+  UploadVideoOptions,
+} from "./video/types.js";

@@ -89,6 +89,33 @@ export class LinkedInClient {
   }
 
   /**
+   * Upload binary data via PUT to an absolute URL (e.g. a presigned upload URL).
+   *
+   * Sets the Authorization and User-Agent headers but skips REST.li
+   * protocol headers since upload endpoints are not REST.li resources.
+   * Returns the raw Response so callers can inspect headers (e.g. ETag).
+   */
+  async uploadBinary(url: string, data: Buffer): Promise<Response> {
+    const headers = new Headers();
+    headers.set("Authorization", `Bearer ${this.accessToken}`);
+    headers.set("User-Agent", this.userAgent);
+    headers.set("Content-Type", "application/octet-stream");
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers,
+      body: data,
+    });
+
+    if (!response.ok) {
+      const body = await this.tryReadBody(response);
+      throw new LinkedInApiError(`Upload failed (HTTP ${response.status})`, response.status, body);
+    }
+
+    return response;
+  }
+
+  /**
    * Execute an HTTP request with retry logic and error handling.
    * Returns the raw successful Response.
    */
