@@ -1,0 +1,46 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.alexey-pelykh/linkedctl",
+  "description": "CLI and MCP server for the LinkedIn API",
+  "repository": {
+    "url": "https://github.com/alexey-pelykh/linkedctl",
+    "source": "github"
+  },
+  "version": "0.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "linkedctl",
+      "version": "0.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "LINKEDCTL_ACCESS_TOKEN",
+          "description": "LinkedIn OAuth2 access token",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "LINKEDCTL_CLIENT_ID",
+          "description": "LinkedIn OAuth2 client ID",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "LINKEDCTL_CLIENT_SECRET",
+          "description": "LinkedIn OAuth2 client secret",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

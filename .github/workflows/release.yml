@@ -61,6 +61,13 @@ jobs:
             exit 1
           fi
           pnpm -r exec npm version "$VERSION" --no-git-tag-version --allow-same-version
+          VERSION="$VERSION" node -e "
+            const fs = require('fs');
+            const s = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+            s.version = process.env.VERSION;
+            s.packages.forEach(p => { p.version = process.env.VERSION; });
+            fs.writeFileSync('server.json', JSON.stringify(s, null, 2) + '\n');
+          "
 
       - run: pnpm build
 
