@@ -22,6 +22,9 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
     getCurrentPersonUrn: vi.fn().mockResolvedValue("urn:li:person:person123"),
     createTextPost: vi.fn().mockResolvedValue("urn:li:share:111222333"),
     createPost: vi.fn().mockResolvedValue("urn:li:share:111222333"),
+    uploadImage: vi.fn().mockResolvedValue("urn:li:image:UPLOADED1"),
+    uploadVideo: vi.fn().mockResolvedValue("urn:li:video:UPLOADED1"),
+    uploadDocument: vi.fn().mockResolvedValue("urn:li:document:UPLOADED1"),
   };
 });
 
@@ -42,6 +45,9 @@ describe("post create", () => {
     });
     vi.mocked(coreMock.createPost).mockResolvedValue("urn:li:share:111222333");
     vi.mocked(coreMock.getCurrentPersonUrn).mockResolvedValue("urn:li:person:person123");
+    vi.mocked(coreMock.uploadImage).mockResolvedValue("urn:li:image:UPLOADED1");
+    vi.mocked(coreMock.uploadVideo).mockResolvedValue("urn:li:video:UPLOADED1");
+    vi.mocked(coreMock.uploadDocument).mockResolvedValue("urn:li:document:UPLOADED1");
   });
 
   afterEach(() => {
@@ -561,6 +567,264 @@ describe("post create", () => {
         expect.objectContaining({
           text: "Plain text",
           content: undefined,
+        }),
+      );
+    });
+  });
+
+  describe("file upload options", () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await mkdtemp(join(tmpdir(), "linkedctl-test-"));
+    });
+
+    afterEach(async () => {
+      await rm(tempDir, { recursive: true, force: true });
+    });
+
+    it("uploads an image file and creates a post with --image-file", async () => {
+      const filePath = join(tempDir, "photo.jpg");
+      await writeFile(filePath, "fake-image-data");
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Photo post",
+        "--image-file",
+        filePath,
+      ]);
+
+      expect(coreMock.uploadImage).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:person:person123",
+          contentType: "image/jpeg",
+        }),
+      );
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Photo post",
+          content: { media: { id: "urn:li:image:UPLOADED1" } },
+        }),
+      );
+    });
+
+    it("uploads a PNG image file with --image-file", async () => {
+      const filePath = join(tempDir, "banner.png");
+      await writeFile(filePath, "fake-png-data");
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "PNG post", "--image-file", filePath]);
+
+      expect(coreMock.uploadImage).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          contentType: "image/png",
+        }),
+      );
+    });
+
+    it("rejects unsupported image format with --image-file", async () => {
+      const filePath = join(tempDir, "photo.bmp");
+      await writeFile(filePath, "fake-bmp-data");
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync(["node", "linkedctl", "post", "create", "--text", "BMP post", "--image-file", filePath]),
+      ).rejects.toThrow(/Unsupported image format/);
+    });
+
+    it("uploads a video file and creates a post with --video-file", async () => {
+      const filePath = join(tempDir, "clip.mp4");
+      await writeFile(filePath, "fake-video-data");
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Video post",
+        "--video-file",
+        filePath,
+      ]);
+
+      expect(coreMock.uploadVideo).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:person:person123",
+        }),
+      );
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Video post",
+          content: { media: { id: "urn:li:video:UPLOADED1" } },
+        }),
+      );
+    });
+
+    it("uploads a document file and creates a post with --document-file", async () => {
+      const filePath = join(tempDir, "deck.pdf");
+      await writeFile(filePath, "fake-pdf-data");
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Document post",
+        "--document-file",
+        filePath,
+      ]);
+
+      expect(coreMock.uploadDocument).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:person:person123",
+        }),
+      );
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Document post",
+          content: { media: { id: "urn:li:document:UPLOADED1" } },
+        }),
+      );
+    });
+
+    it("rejects unsupported document format with --document-file", async () => {
+      const filePath = join(tempDir, "file.txt");
+      await writeFile(filePath, "text content");
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Text post", "--document-file", filePath]),
+      ).rejects.toThrow(/Unsupported file type/);
+    });
+
+    it("uploads multiple image files and creates a multi-image post with --image-files", async () => {
+      const filePath1 = join(tempDir, "a.jpg");
+      const filePath2 = join(tempDir, "b.png");
+      await writeFile(filePath1, "fake-jpg-data");
+      await writeFile(filePath2, "fake-png-data");
+
+      vi.mocked(coreMock.uploadImage)
+        .mockResolvedValueOnce("urn:li:image:UP1")
+        .mockResolvedValueOnce("urn:li:image:UP2");
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Gallery post",
+        "--image-files",
+        `${filePath1},${filePath2}`,
+      ]);
+
+      expect(coreMock.uploadImage).toHaveBeenCalledTimes(2);
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Gallery post",
+          content: {
+            multiImage: {
+              images: [{ id: "urn:li:image:UP1" }, { id: "urn:li:image:UP2" }],
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects --image-files with fewer than 2 paths", async () => {
+      const filePath = join(tempDir, "single.jpg");
+      await writeFile(filePath, "fake-data");
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Single", "--image-files", filePath]),
+      ).rejects.toThrow(/at least 2/);
+    });
+
+    it("rejects combining --image-file with --image URN", async () => {
+      const filePath = join(tempDir, "photo.jpg");
+      await writeFile(filePath, "fake-data");
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync([
+          "node",
+          "linkedctl",
+          "post",
+          "create",
+          "--text",
+          "Both",
+          "--image-file",
+          filePath,
+          "--image",
+          "urn:li:image:X",
+        ]),
+      ).rejects.toThrow(/Only one media option/);
+    });
+
+    it("rejects combining --video-file with --document-file", async () => {
+      const videoPath = join(tempDir, "clip.mp4");
+      const docPath = join(tempDir, "deck.pdf");
+      await writeFile(videoPath, "fake-video");
+      await writeFile(docPath, "fake-doc");
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync([
+          "node",
+          "linkedctl",
+          "post",
+          "create",
+          "--text",
+          "Both",
+          "--video-file",
+          videoPath,
+          "--document-file",
+          docPath,
+        ]),
+      ).rejects.toThrow(/Only one media option/);
+    });
+
+    it("uses --image-file on post shorthand", async () => {
+      const filePath = join(tempDir, "photo.jpg");
+      await writeFile(filePath, "fake-image-data");
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "--text", "Shorthand upload", "--image-file", filePath]);
+
+      expect(coreMock.uploadImage).toHaveBeenCalled();
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Shorthand upload",
+          content: { media: { id: "urn:li:image:UPLOADED1" } },
         }),
       );
     });

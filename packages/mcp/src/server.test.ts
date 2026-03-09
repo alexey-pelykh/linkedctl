@@ -25,7 +25,15 @@ vi.mock("@linkedctl/core", () => ({
   getUserInfo: vi.fn(),
   createTextPost: vi.fn(),
   createPost: vi.fn(),
+  uploadImage: vi.fn(),
+  uploadVideo: vi.fn(),
   uploadDocument: vi.fn(),
+  SUPPORTED_IMAGE_TYPES: new Map([
+    [".jpg", "image/jpeg"],
+    [".jpeg", "image/jpeg"],
+    [".png", "image/png"],
+    [".gif", "image/gif"],
+  ]),
   DOCUMENT_EXTENSIONS: [".pdf", ".docx", ".pptx", ".doc", ".ppt"],
   DOCUMENT_MAX_SIZE_BYTES: 100 * 1024 * 1024,
   loadConfigFile: vi.fn(),
@@ -43,6 +51,8 @@ import {
   getCurrentPersonUrn,
   getUserInfo,
   createPost,
+  uploadImage,
+  uploadVideo,
   uploadDocument,
   loadConfigFile,
   validateConfig,
@@ -455,6 +465,281 @@ describe("createMcpServer", () => {
         {
           type: "text",
           text: expect.stringContaining("at least 2"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("uploads an image file and creates a post with image_file", async () => {
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-image-data"));
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(uploadImage).mockResolvedValue("urn:li:image:UPLOADED1");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:imgfile001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Photo from file",
+          image_file: "/path/to/photo.jpg",
+        },
+      });
+
+      expect(uploadImage).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:person:abc123",
+          contentType: "image/jpeg",
+        }),
+      );
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: { media: { id: "urn:li:image:UPLOADED1" } },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:imgfile001" }]);
+    });
+
+    it("returns error for unsupported image format in image_file", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "BMP post",
+          image_file: "/path/to/photo.bmp",
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Unsupported image format"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("uploads a video file and creates a post with video_file", async () => {
+      vi.mocked(stat).mockResolvedValue({ size: 1024, isFile: () => true } as ReturnType<
+        typeof import("node:fs/promises").stat
+      > extends Promise<infer T>
+        ? T
+        : never);
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-video-data"));
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(uploadVideo).mockResolvedValue("urn:li:video:UPLOADED1");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:vidfile001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Video from file",
+          video_file: "/path/to/clip.mp4",
+        },
+      });
+
+      expect(uploadVideo).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:person:abc123",
+        }),
+      );
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: { media: { id: "urn:li:video:UPLOADED1" } },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:vidfile001" }]);
+    });
+
+    it("uploads a document file and creates a post with document_file", async () => {
+      vi.mocked(stat).mockResolvedValue({ size: 1024 } as ReturnType<
+        typeof import("node:fs/promises").stat
+      > extends Promise<infer T>
+        ? T
+        : never);
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-pdf-data"));
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(uploadDocument).mockResolvedValue("urn:li:document:UPLOADED1");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:docfile001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Document from file",
+          document_file: "/path/to/deck.pdf",
+        },
+      });
+
+      expect(uploadDocument).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: "urn:li:person:abc123",
+        }),
+      );
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: { media: { id: "urn:li:document:UPLOADED1" } },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:docfile001" }]);
+    });
+
+    it("returns error for unsupported document format in document_file", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "TXT post",
+          document_file: "/path/to/file.txt",
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Unsupported file type"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("uploads multiple image files and creates a multi-image post with image_files", async () => {
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-image-data"));
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(uploadImage).mockResolvedValueOnce("urn:li:image:UP1").mockResolvedValueOnce("urn:li:image:UP2");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:multifile001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Gallery from files",
+          image_files: ["/path/to/a.jpg", "/path/to/b.png"],
+        },
+      });
+
+      expect(uploadImage).toHaveBeenCalledTimes(2);
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: {
+            multiImage: {
+              images: [{ id: "urn:li:image:UP1" }, { id: "urn:li:image:UP2" }],
+            },
+          },
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:multifile001" }]);
+    });
+
+    it("returns error when image_files has fewer than 2 items", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Single file",
+          image_files: ["/path/to/a.jpg"],
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("at least 2"),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when combining file and URN media options", async () => {
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Conflicting",
+          image: "urn:li:image:X",
+          image_file: "/path/to/photo.jpg",
+        },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Only one media option"),
         },
       ]);
       expect(result.isError).toBe(true);

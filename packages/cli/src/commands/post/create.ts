@@ -1,10 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Oleksii PELYKH
 
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
+import { extname } from "node:path";
 
 import { Command, InvalidArgumentError, Option } from "commander";
-import { resolveConfig, LinkedInClient, getCurrentPersonUrn, createPost, LinkedInApiError } from "@linkedctl/core";
+import {
+  resolveConfig,
+  LinkedInClient,
+  getCurrentPersonUrn,
+  createPost,
+  LinkedInApiError,
+  uploadImage,
+  uploadVideo,
+  uploadDocument,
+  SUPPORTED_IMAGE_TYPES,
+  DOCUMENT_EXTENSIONS,
+  DOCUMENT_MAX_SIZE_BYTES,
+} from "@linkedctl/core";
 import type { PostVisibility, PostContent } from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
 import type { OutputFormat } from "../../output/index.js";
@@ -19,6 +32,10 @@ interface CreateOpts {
   document?: string | undefined;
   articleUrl?: string | undefined;
   images?: string | undefined;
+  imageFile?: string | undefined;
+  videoFile?: string | undefined;
+  documentFile?: string | undefined;
+  imageFiles?: string | undefined;
   format?: string | undefined;
 }
 
@@ -61,15 +78,27 @@ async function resolveText(
 }
 
 /**
- * Resolve media content from mutually exclusive CLI options.
+ * Resolve media content from mutually exclusive CLI options (URN-based).
+ *
+ * Also validates mutual exclusivity against file-based options.
  */
 function resolveContent(opts: CreateOpts): PostContent | undefined {
-  const mediaFlags = [opts.image, opts.video, opts.document, opts.articleUrl, opts.images].filter(
-    (v) => v !== undefined,
-  );
+  const mediaFlags = [
+    opts.image,
+    opts.video,
+    opts.document,
+    opts.articleUrl,
+    opts.images,
+    opts.imageFile,
+    opts.videoFile,
+    opts.documentFile,
+    opts.imageFiles,
+  ].filter((v) => v !== undefined);
 
   if (mediaFlags.length > 1) {
-    throw new Error("Only one media option may be specified: --image, --video, --document, --article-url, or --images");
+    throw new Error(
+      "Only one media option may be specified: --image, --video, --document, --article-url, --images, --image-file, --video-file, --document-file, or --image-files",
+    );
   }
 
   if (opts.image !== undefined) {
@@ -95,6 +124,74 @@ function resolveContent(opts: CreateOpts): PostContent | undefined {
 }
 
 /**
+ * Resolve media content from file-based CLI options by uploading files first.
+ */
+async function resolveFileContent(
+  opts: CreateOpts,
+  client: LinkedInClient,
+  ownerUrn: string,
+): Promise<PostContent | undefined> {
+  if (opts.imageFile !== undefined) {
+    const ext = extname(opts.imageFile).toLowerCase();
+    const contentType = SUPPORTED_IMAGE_TYPES.get(ext);
+    if (contentType === undefined) {
+      const supported = [...SUPPORTED_IMAGE_TYPES.keys()].join(", ");
+      throw new Error(`Unsupported image format "${ext}". Supported formats: ${supported}`);
+    }
+    const data = new Uint8Array(await readFile(opts.imageFile));
+    const urn = await uploadImage(client, { owner: ownerUrn, data, contentType });
+    return { media: { id: urn } };
+  }
+
+  if (opts.videoFile !== undefined) {
+    const fileStat = await stat(opts.videoFile);
+    if (!fileStat.isFile()) {
+      throw new Error(`Not a file: ${opts.videoFile}`);
+    }
+    const data = await readFile(opts.videoFile);
+    const urn = await uploadVideo(client, { owner: ownerUrn, data });
+    return { media: { id: urn } };
+  }
+
+  if (opts.documentFile !== undefined) {
+    const ext = extname(opts.documentFile).toLowerCase();
+    if (!DOCUMENT_EXTENSIONS.includes(ext as (typeof DOCUMENT_EXTENSIONS)[number])) {
+      throw new Error(`Unsupported file type "${ext}". Supported types: ${DOCUMENT_EXTENSIONS.join(", ")}`);
+    }
+    const fileStat = await stat(opts.documentFile);
+    if (fileStat.size > DOCUMENT_MAX_SIZE_BYTES) {
+      const sizeMB = Math.round(fileStat.size / (1024 * 1024));
+      throw new Error(`File is ${sizeMB} MB, which exceeds the 100 MB limit.`);
+    }
+    const data = new Uint8Array(await readFile(opts.documentFile));
+    const urn = await uploadDocument(client, { owner: ownerUrn, data });
+    return { media: { id: urn } };
+  }
+
+  if (opts.imageFiles !== undefined) {
+    const paths = opts.imageFiles.split(",").map((s) => s.trim());
+    if (paths.length < 2) {
+      throw new Error("--image-files requires at least 2 comma-separated file paths");
+    }
+    const urns: string[] = [];
+    for (const filePath of paths) {
+      const ext = extname(filePath).toLowerCase();
+      const contentType = SUPPORTED_IMAGE_TYPES.get(ext);
+      if (contentType === undefined) {
+        const supported = [...SUPPORTED_IMAGE_TYPES.keys()].join(", ");
+        throw new Error(`Unsupported image format "${ext}" for file "${filePath}". Supported formats: ${supported}`);
+      }
+      const data = new Uint8Array(await readFile(filePath));
+      const urn = await uploadImage(client, { owner: ownerUrn, data, contentType });
+      urns.push(urn);
+    }
+    return { multiImage: { images: urns.map((id) => ({ id })) } };
+  }
+
+  return undefined;
+}
+
+/**
  * Shared action handler for creating a post.
  */
 export async function createPostAction(textArg: string | undefined, opts: CreateOpts, cmd: Command): Promise<void> {
@@ -113,6 +210,8 @@ export async function createPostAction(textArg: string | undefined, opts: Create
 
   const authorUrn = await getCurrentPersonUrn(client);
 
+  const finalContent = content ?? (await resolveFileContent(opts, client, authorUrn));
+
   const visibility = (opts.visibility as PostVisibility | undefined) ?? "PUBLIC";
 
   try {
@@ -120,7 +219,7 @@ export async function createPostAction(textArg: string | undefined, opts: Create
       author: authorUrn,
       text,
       visibility,
-      content,
+      content: finalContent,
     });
 
     const format = resolveFormat(opts.format as OutputFormat | undefined, process.stdout, globals.json === true);
@@ -143,6 +242,10 @@ export function addMediaOptions(cmd: Command): void {
   cmd.option("--document <urn>", "attach a document by URN");
   cmd.option("--article-url <url>", "attach an article link");
   cmd.option("--images <urns>", "attach multiple images (comma-separated URNs, minimum 2)");
+  cmd.option("--image-file <path>", "upload a local image file and attach it");
+  cmd.option("--video-file <path>", "upload a local video file and attach it");
+  cmd.option("--document-file <path>", "upload a local document file and attach it");
+  cmd.option("--image-files <paths>", "upload multiple local image files and attach them (comma-separated, minimum 2)");
 }
 
 export function createCommand(): Command {
@@ -176,6 +279,10 @@ Examples:
   linkedctl post create --text "Watch this" --video urn:li:video:D5608AQ...
   linkedctl post create --text "Read more" --article-url https://example.com/article
   linkedctl post create --text "Gallery" --images urn:li:image:A1,urn:li:image:A2
+  linkedctl post create --text "Photo" --image-file photo.jpg
+  linkedctl post create --text "Video" --video-file clip.mp4
+  linkedctl post create --text "Deck" --document-file deck.pdf
+  linkedctl post create --text "Gallery" --image-files a.jpg,b.jpg
   echo "Hello" | linkedctl post create`,
   );
 
