@@ -3,8 +3,8 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { createRequire } from "node:module";
-import { Command } from "commander";
-import { createProgram } from "@linkedctl/cli";
+import { Command, CommanderError } from "commander";
+import { createProgram, ExitCode } from "@linkedctl/cli";
 import { startStdioServer } from "@linkedctl/mcp/stdio";
 
 const require = createRequire(import.meta.url);
@@ -22,7 +22,14 @@ program.addCommand(mcpCommand);
 try {
   await program.parseAsync(process.argv);
 } catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`error: ${message}`);
-  process.exitCode = 1;
+  if (error instanceof CommanderError) {
+    if (error.exitCode !== 0) {
+      // Usage error — Commander already printed the message
+      process.exitCode = ExitCode.USAGE_ERROR;
+    }
+  } else {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`error: ${message}`);
+    process.exitCode = ExitCode.RUNTIME_ERROR;
+  }
 }

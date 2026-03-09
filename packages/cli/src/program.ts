@@ -27,7 +27,16 @@ export function createProgram(version?: string): Command {
   program.addCommand(profileCommand());
   program.addCommand(whoamiCommand());
 
-  program.addHelpText("after", "\nGet started: linkedctl auth setup");
+  program.exitOverride();
+
+  program.addHelpText(
+    "after",
+    "\nGet started: linkedctl auth setup" +
+      "\n\nExit codes:" +
+      "\n  0   success" +
+      "\n  1   runtime error (API failure, network, auth)" +
+      "\n  2   usage error (invalid arguments or options)",
+  );
 
   return program;
 }
