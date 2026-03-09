@@ -18,7 +18,7 @@ import {
   DOCUMENT_EXTENSIONS,
   DOCUMENT_MAX_SIZE_BYTES,
 } from "@linkedctl/core";
-import type { PostVisibility, PostContent } from "@linkedctl/core";
+import type { PostVisibility, PostLifecycleState, PostContent } from "@linkedctl/core";
 import { resolveFormat, formatOutput } from "../../output/index.js";
 import type { OutputFormat } from "../../output/index.js";
 import { readStdin } from "./stdin.js";
@@ -27,6 +27,7 @@ interface CreateOpts {
   text?: string | undefined;
   textFile?: string | undefined;
   visibility?: string | undefined;
+  draft?: boolean | undefined;
   image?: string | undefined;
   video?: string | undefined;
   document?: string | undefined;
@@ -213,6 +214,7 @@ export async function createPostAction(textArg: string | undefined, opts: Create
   const finalContent = content ?? (await resolveFileContent(opts, client, authorUrn));
 
   const visibility = (opts.visibility as PostVisibility | undefined) ?? "PUBLIC";
+  const lifecycleState: PostLifecycleState = opts.draft === true ? "DRAFT" : "PUBLISHED";
 
   try {
     const postUrn = await createPost(client, {
@@ -220,6 +222,7 @@ export async function createPostAction(textArg: string | undefined, opts: Create
       text,
       visibility,
       content: finalContent,
+      lifecycleState,
     });
 
     const format = resolveFormat(opts.format as OutputFormat | undefined, process.stdout, globals.json === true);
@@ -266,6 +269,7 @@ export function createCommand(): Command {
       })
       .default("PUBLIC"),
   );
+  cmd.option("--draft", "save post as draft instead of publishing");
   addMediaOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
 
@@ -283,6 +287,7 @@ Examples:
   linkedctl post create --text "Video" --video-file clip.mp4
   linkedctl post create --text "Deck" --document-file deck.pdf
   linkedctl post create --text "Gallery" --image-files a.jpg,b.jpg
+  linkedctl post create --draft --text "Work in progress"
   echo "Hello" | linkedctl post create`,
   );
 

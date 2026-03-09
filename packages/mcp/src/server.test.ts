@@ -726,6 +726,69 @@ describe("createMcpServer", () => {
       expect(result.isError).toBe(true);
     });
 
+    it("creates a draft post when draft is true", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:draft001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Draft post",
+          draft: true,
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Draft post",
+          lifecycleState: "DRAFT",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:draft001" }]);
+    });
+
+    it("defaults to PUBLISHED when draft is not specified", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:pub001");
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: {
+          text: "Published post",
+        },
+      });
+
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Published post",
+          lifecycleState: "PUBLISHED",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:pub001" }]);
+    });
+
     it("returns error when combining file and URN media options", async () => {
       const result = await client.callTool({
         name: "post_create",

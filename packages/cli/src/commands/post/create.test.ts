@@ -286,6 +286,71 @@ describe("post create", () => {
     );
   });
 
+  describe("--draft", () => {
+    it("creates a draft post with --draft on post create", async () => {
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Draft post", "--draft"]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Draft post",
+          lifecycleState: "DRAFT",
+        }),
+      );
+    });
+
+    it("creates a draft post with --draft on post shorthand", async () => {
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "--text", "Draft shorthand", "--draft"]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Draft shorthand",
+          lifecycleState: "DRAFT",
+        }),
+      );
+    });
+
+    it("defaults to PUBLISHED when --draft is not specified", async () => {
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Published post"]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Published post",
+          lifecycleState: "PUBLISHED",
+        }),
+      );
+    });
+
+    it("creates a draft post with media attachment", async () => {
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Draft with image",
+        "--draft",
+        "--image",
+        "urn:li:image:C5608AQ123",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: "Draft with image",
+          lifecycleState: "DRAFT",
+          content: { media: { id: "urn:li:image:C5608AQ123" } },
+        }),
+      );
+    });
+  });
+
   describe("--text-file", () => {
     let tempDir: string;
 
