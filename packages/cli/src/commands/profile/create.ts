@@ -11,10 +11,10 @@ export function createCommand(): Command {
   const cmd = new Command("create");
   cmd.description("Create a new profile");
   cmd.argument("<name>", "profile name");
-  cmd.requiredOption("--access-token <token>", "OAuth2 access token");
+  cmd.option("--access-token <token>", "OAuth2 access token");
   cmd.option("--api-version <version>", "LinkedIn API version", DEFAULT_API_VERSION);
 
-  cmd.action(async (name: string, opts: { accessToken: string; apiVersion: string }) => {
+  cmd.action(async (name: string, opts: { accessToken?: string; apiVersion: string }) => {
     if (!isValidProfileName(name)) {
       throw new Error(`Invalid profile name "${name}". Names must not contain path separators or be empty.`);
     }
@@ -32,8 +32,10 @@ export function createCommand(): Command {
     const profilePath = join(profileDir, `${name}.yaml`);
     await writeFile(profilePath, `api-version: "${opts.apiVersion}"\n`, { mode: 0o600 });
 
-    // Save the access token (merges into existing file)
-    await saveOAuthTokens({ accessToken: opts.accessToken }, { profile: name });
+    // Save the access token if provided (merges into existing file)
+    if (opts.accessToken !== undefined) {
+      await saveOAuthTokens({ accessToken: opts.accessToken }, { profile: name });
+    }
 
     console.log(`Profile "${name}" created.`);
   });
