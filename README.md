@@ -47,15 +47,12 @@ See the [OAuth Setup Guide](https://github.com/alexey-pelykh/linkedctl/blob/main
 
 ## MCP Integration
 
-### Claude Code
+### MCP Client Configuration
 
-```sh
-claude mcp add linkedctl -- npx linkedctl mcp
-```
+<details>
+<summary><b>Claude Desktop</b></summary>
 
-### Claude Desktop
-
-Add to `claude_desktop_config.json`:
+Add to your Claude Desktop configuration (`claude_desktop_config.json`):
 
 ```json
 {
@@ -67,6 +64,53 @@ Add to `claude_desktop_config.json`:
     }
 }
 ```
+
+</details>
+
+<details>
+<summary><b>Claude Code</b></summary>
+
+```sh
+claude mcp add linkedctl -- npx linkedctl mcp
+```
+
+</details>
+
+<details>
+<summary><b>Cursor</b></summary>
+
+Add to `.cursor/mcp.json` in your project root:
+
+```json
+{
+    "mcpServers": {
+        "linkedctl": {
+            "command": "npx",
+            "args": ["linkedctl", "mcp"]
+        }
+    }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Windsurf</b></summary>
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+    "mcpServers": {
+        "linkedctl": {
+            "command": "npx",
+            "args": ["linkedctl", "mcp"]
+        }
+    }
+}
+```
+
+</details>
 
 ### Available Tools
 
