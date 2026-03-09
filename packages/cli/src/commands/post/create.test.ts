@@ -25,6 +25,10 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
     uploadImage: vi.fn().mockResolvedValue("urn:li:image:UPLOADED1"),
     uploadVideo: vi.fn().mockResolvedValue("urn:li:video:UPLOADED1"),
     uploadDocument: vi.fn().mockResolvedValue("urn:li:document:UPLOADED1"),
+    listOrganizations: vi.fn().mockResolvedValue({
+      elements: [],
+      paging: { count: 100, start: 0 },
+    }),
   };
 });
 
@@ -48,6 +52,10 @@ describe("post create", () => {
     vi.mocked(coreMock.uploadImage).mockResolvedValue("urn:li:image:UPLOADED1");
     vi.mocked(coreMock.uploadVideo).mockResolvedValue("urn:li:video:UPLOADED1");
     vi.mocked(coreMock.uploadDocument).mockResolvedValue("urn:li:document:UPLOADED1");
+    vi.mocked(coreMock.listOrganizations).mockResolvedValue({
+      elements: [],
+      paging: { count: 100, start: 0 },
+    });
   });
 
   afterEach(() => {
@@ -1093,6 +1101,132 @@ describe("post create", () => {
           }),
         }),
       );
+    });
+  });
+
+  describe("--as-org", () => {
+    it("creates a post as organization on post create", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValue({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "linkedctl",
+        "post",
+        "create",
+        "--text",
+        "Company update",
+        "--as-org",
+        "98765",
+      ]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          author: "urn:li:organization:98765",
+          text: "Company update",
+        }),
+      );
+      expect(coreMock.getCurrentPersonUrn).not.toHaveBeenCalled();
+    });
+
+    it("creates a post as organization on post shorthand", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValue({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "--text", "Company shorthand", "--as-org", "98765"]);
+
+      expect(coreMock.createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          author: "urn:li:organization:98765",
+          text: "Company shorthand",
+        }),
+      );
+    });
+
+    it("requires w_organization_social scope when --as-org is used", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValue({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Org post", "--as-org", "98765"]);
+
+      expect(coreMock.resolveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiredScopes: expect.arrayContaining(["w_organization_social"]),
+        }),
+      );
+    });
+
+    it("does not require w_organization_social scope for personal posts", async () => {
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Personal post"]);
+
+      expect(coreMock.resolveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiredScopes: expect.not.arrayContaining(["w_organization_social"]),
+        }),
+      );
+    });
+
+    it("rejects --as-org when user is not an administrator", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValue({
+        elements: [],
+        paging: { count: 100, start: 0 },
+      });
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(
+        program.parseAsync(["node", "linkedctl", "post", "create", "--text", "Org post", "--as-org", "99999"]),
+      ).rejects.toThrow(/not an administrator of organization 99999/);
+    });
+
+    it("uses org URN as owner for file uploads", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValue({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+
+      const filePath = join(tmpdir(), "linkedctl-test-org-img.jpg");
+      const { writeFile: writeFileFs } = await import("node:fs/promises");
+      await writeFileFs(filePath, "fake-image-data");
+
+      try {
+        const program = createProgram();
+        await program.parseAsync([
+          "node",
+          "linkedctl",
+          "post",
+          "create",
+          "--text",
+          "Org photo",
+          "--as-org",
+          "98765",
+          "--image-file",
+          filePath,
+        ]);
+
+        expect(coreMock.uploadImage).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            owner: "urn:li:organization:98765",
+          }),
+        );
+      } finally {
+        const { rm: rmFs } = await import("node:fs/promises");
+        await rmFs(filePath, { force: true });
+      }
     });
   });
 });

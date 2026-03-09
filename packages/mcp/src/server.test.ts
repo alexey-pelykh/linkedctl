@@ -1010,7 +1010,7 @@ describe("createMcpServer", () => {
       expect(result.isError).toBe(true);
     });
 
-    it("creates post as organization when as_org is specified", async () => {
+    it("creates a post as organization when as_org is provided", async () => {
       vi.mocked(resolveConfig).mockResolvedValue({
         config: {
           oauth: { accessToken: "test-token" },
@@ -1021,23 +1021,31 @@ describe("createMcpServer", () => {
       vi.mocked(LinkedInClient).mockImplementation(function () {
         return Object.create(null);
       } as unknown as typeof LinkedInClient);
-      vi.mocked(getOrganization).mockResolvedValue({ id: 12345, localizedName: "Test Org" });
-      vi.mocked(createPost).mockResolvedValue("urn:li:share:org123");
+      vi.mocked(listOrganizations).mockResolvedValue({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:orgPost789");
 
       const result = await client.callTool({
         name: "post_create",
-        arguments: { text: "Org post", as_org: "12345" },
+        arguments: { text: "Company update", as_org: "98765" },
       });
 
-      expect(getOrganization).toHaveBeenCalledWith(expect.anything(), "12345");
-      expect(createPost).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(resolveConfig).toHaveBeenCalledWith(
         expect.objectContaining({
-          author: "urn:li:organization:12345",
+          requiredScopes: expect.arrayContaining(["w_organization_social"]),
         }),
       );
       expect(getCurrentPersonUrn).not.toHaveBeenCalled();
-      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:org123" }]);
+      expect(createPost).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          author: "urn:li:organization:98765",
+          text: "Company update",
+        }),
+      );
+      expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:orgPost789" }]);
     });
 
     it("uses org URN as owner for file uploads when as_org is specified", async () => {
@@ -1051,7 +1059,10 @@ describe("createMcpServer", () => {
       vi.mocked(LinkedInClient).mockImplementation(function () {
         return Object.create(null);
       } as unknown as typeof LinkedInClient);
-      vi.mocked(getOrganization).mockResolvedValue({ id: 12345, localizedName: "Test Org" });
+      vi.mocked(listOrganizations).mockResolvedValue({
+        elements: [{ organization: "urn:li:organization:12345", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
       vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-image"));
       vi.mocked(uploadImage).mockResolvedValue("urn:li:image:org456");
       vi.mocked(createPost).mockResolvedValue("urn:li:share:org789");
@@ -1074,6 +1085,58 @@ describe("createMcpServer", () => {
         }),
       );
       expect(result.content).toEqual([{ type: "text", text: "Post created: urn:li:share:org789" }]);
+    });
+
+    it("returns error when user is not an administrator of the organization", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listOrganizations).mockResolvedValue({
+        elements: [],
+        paging: { count: 100, start: 0 },
+      });
+
+      const result = await client.callTool({
+        name: "post_create",
+        arguments: { text: "Org post", as_org: "99999" },
+      });
+
+      expect(result.content).toEqual([{ type: "text", text: "You are not an administrator of organization 99999" }]);
+      expect(result.isError).toBe(true);
+      expect(createPost).not.toHaveBeenCalled();
+    });
+
+    it("does not require w_organization_social scope for personal posts", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockResolvedValue("urn:li:person:abc123");
+      vi.mocked(createPost).mockResolvedValue("urn:li:share:post456");
+
+      await client.callTool({
+        name: "post_create",
+        arguments: { text: "Personal post" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiredScopes: expect.not.arrayContaining(["w_organization_social"]),
+        }),
+      );
     });
   });
 

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import { Command, InvalidArgumentError, Option } from "commander";
-import { addMediaOptions, addPollOptions, createCommand, createPostAction } from "./create.js";
+import { addMediaOptions, addOrgOption, addPollOptions, createCommand, createPostAction } from "./create.js";
 import { getCommand } from "./get.js";
 import { listCommand } from "./list.js";
 import { updateCommand } from "./update.js";
@@ -30,6 +30,7 @@ export function postCommand(): Command {
       .default("PUBLIC"),
   );
   cmd.option("--draft", "save post as draft instead of publishing");
+  addOrgOption(cmd);
   addMediaOptions(cmd);
   addPollOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
@@ -43,6 +44,7 @@ Examples:
   linkedctl post --text "Check this out" --image urn:li:image:C5608AQ...
   linkedctl post --draft --text "Work in progress"
   linkedctl post --text "Vote!" --poll "Favorite?" --option "A" --option "B"
+  linkedctl post --text "Company update" --as-org 12345
   echo "Hello" | linkedctl post`,
   );
 
