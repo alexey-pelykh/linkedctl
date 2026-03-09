@@ -14,6 +14,7 @@ import {
   uploadImage,
   uploadVideo,
   uploadDocument,
+  listOrganizations,
   SUPPORTED_IMAGE_TYPES,
   DOCUMENT_EXTENSIONS,
   DOCUMENT_MAX_SIZE_BYTES,
@@ -28,6 +29,7 @@ interface CreateOpts {
   textFile?: string | undefined;
   visibility?: string | undefined;
   draft?: boolean | undefined;
+  asOrg?: string | undefined;
   image?: string | undefined;
   video?: string | undefined;
   document?: string | undefined;
@@ -221,16 +223,32 @@ export async function createPostAction(textArg: string | undefined, opts: Create
   const content = resolveContent(opts);
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined; json?: boolean | undefined }>();
 
+  const requiredScopes = ["openid", "profile", "email", "w_member_social"];
+  if (opts.asOrg !== undefined) {
+    requiredScopes.push("w_organization_social");
+  }
+
   const { config } = await resolveConfig({
     profile: globals.profile,
-    requiredScopes: ["openid", "profile", "email", "w_member_social"],
+    requiredScopes,
   });
   // resolveConfig guarantees oauth.accessToken and apiVersion are defined
   const accessToken = config.oauth?.accessToken ?? "";
   const apiVersion = config.apiVersion ?? "";
   const client = new LinkedInClient({ accessToken, apiVersion });
 
-  const authorUrn = await getCurrentPersonUrn(client);
+  let authorUrn: string;
+  if (opts.asOrg !== undefined) {
+    const orgUrn = `urn:li:organization:${opts.asOrg}`;
+    const response = await listOrganizations(client, { count: 100 });
+    const isAdmin = response.elements.some((acl) => acl.organization === orgUrn);
+    if (!isAdmin) {
+      throw new Error(`You are not an administrator of organization ${opts.asOrg}`);
+    }
+    authorUrn = orgUrn;
+  } else {
+    authorUrn = await getCurrentPersonUrn(client);
+  }
 
   const finalContent = content ?? (await resolveFileContent(opts, client, authorUrn));
 
@@ -275,6 +293,13 @@ export function addMediaOptions(cmd: Command): void {
 /**
  * Add poll options shared between `post create` and `post` shorthand.
  */
+/**
+ * Add --as-org option shared between `post create` and `post` shorthand.
+ */
+export function addOrgOption(cmd: Command): void {
+  cmd.option("--as-org <id>", "post as an organization (numeric organization ID)");
+}
+
 export function addPollOptions(cmd: Command): void {
   cmd.option("--poll <question>", "create a poll with the given question");
   cmd.option("--option <text>", "add a poll answer option (repeat for each option, 2-4 required)", collectOption);
@@ -308,6 +333,7 @@ export function createCommand(): Command {
       .default("PUBLIC"),
   );
   cmd.option("--draft", "save post as draft instead of publishing");
+  addOrgOption(cmd);
   addMediaOptions(cmd);
   addPollOptions(cmd);
   cmd.addOption(new Option("--format <format>", "output format (json or table)").choices(["json", "table"]));
@@ -328,6 +354,7 @@ Examples:
   linkedctl post create --text "Gallery" --image-files a.jpg,b.jpg
   linkedctl post create --draft --text "Work in progress"
   linkedctl post create --text "Vote!" --poll "Favorite language?" --option "TypeScript" --option "Python"
+  linkedctl post create --text "Company update" --as-org 12345
   echo "Hello" | linkedctl post create`,
   );
 

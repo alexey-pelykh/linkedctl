@@ -129,7 +129,10 @@ export function createMcpServer(): McpServer {
           .enum(["ONE_DAY", "THREE_DAYS", "ONE_WEEK", "TWO_WEEKS"])
           .optional()
           .describe("How long the poll stays open (defaults to THREE_DAYS)"),
-        as_org: z.string().optional().describe("Organization ID to upload as (e.g. 12345)"),
+        as_org: z
+          .string()
+          .optional()
+          .describe("Post as an organization (numeric organization ID). The authenticated user must be an admin."),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
@@ -198,9 +201,14 @@ export function createMcpServer(): McpServer {
         };
       }
 
+      const requiredScopes = ["openid", "profile", "email", "w_member_social"];
+      if (args.as_org !== undefined) {
+        requiredScopes.push("w_organization_social");
+      }
+
       const { config } = await resolveConfig({
         profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        requiredScopes,
       });
       // resolveConfig guarantees oauth.accessToken and apiVersion are defined
       const accessToken = config.oauth?.accessToken ?? "";
@@ -209,8 +217,21 @@ export function createMcpServer(): McpServer {
 
       let authorUrn: string;
       if (args.as_org !== undefined) {
-        await getOrganization(client, args.as_org);
-        authorUrn = `urn:li:organization:${args.as_org}`;
+        const orgUrn = `urn:li:organization:${args.as_org}`;
+        const response = await listOrganizations(client, { count: 100 });
+        const isAdmin = response.elements.some((acl) => acl.organization === orgUrn);
+        if (!isAdmin) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `You are not an administrator of organization ${args.as_org}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        authorUrn = orgUrn;
       } else {
         authorUrn = await getCurrentPersonUrn(client);
       }
