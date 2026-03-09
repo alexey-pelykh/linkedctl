@@ -4,6 +4,7 @@
 import { Command } from "commander";
 import { authCommand } from "./commands/auth/index.js";
 import { completionCommand } from "./commands/completion.js";
+import { mediaCommand } from "./commands/media/index.js";
 import { postCommand } from "./commands/post/index.js";
 import { profileCommand } from "./commands/profile/index.js";
 import { whoamiCommand } from "./commands/whoami.js";
@@ -33,6 +34,7 @@ export function createProgram(version?: string): Command {
 
   program.addCommand(authCommand());
   program.addCommand(completionCommand(program));
+  program.addCommand(mediaCommand());
   program.addCommand(postCommand());
   program.addCommand(profileCommand());
   program.addCommand(whoamiCommand());
