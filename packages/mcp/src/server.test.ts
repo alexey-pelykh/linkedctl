@@ -2568,6 +2568,58 @@ describe("createMcpServer", () => {
         requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
       });
     });
+
+    it("passes only from date when to is omitted", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      vi.mocked(getPostAnalytics).mockResolvedValue({
+        impressions: { status: "success", dataPoints: [{ count: 0 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 0 }] },
+        reactions: { status: "success", dataPoints: [{ count: 0 }] },
+        comments: { status: "success", dataPoints: [{ count: 0 }] },
+        reshares: { status: "success", dataPoints: [{ count: 0 }] },
+      });
+
+      await client.callTool({
+        name: "stats_post",
+        arguments: { post_urn: "urn:li:share:123", from: "2025-06-01" },
+      });
+
+      expect(getPostAnalytics).toHaveBeenCalledWith(expect.anything(), {
+        postUrn: "urn:li:share:123",
+        aggregation: undefined,
+        dateRange: { start: { year: 2025, month: 6, day: 1 } },
+      });
+    });
+
+    it("passes only to date when from is omitted", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      vi.mocked(getPostAnalytics).mockResolvedValue({
+        impressions: { status: "success", dataPoints: [{ count: 0 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 0 }] },
+        reactions: { status: "success", dataPoints: [{ count: 0 }] },
+        comments: { status: "success", dataPoints: [{ count: 0 }] },
+        reshares: { status: "success", dataPoints: [{ count: 0 }] },
+      });
+
+      await client.callTool({
+        name: "stats_post",
+        arguments: { post_urn: "urn:li:share:123", to: "2025-12-31" },
+      });
+
+      expect(getPostAnalytics).toHaveBeenCalledWith(expect.anything(), {
+        postUrn: "urn:li:share:123",
+        aggregation: undefined,
+        dateRange: { end: { year: 2025, month: 12, day: 31 } },
+      });
+    });
   });
 
   describe("stats_me", () => {
