@@ -81,6 +81,36 @@ api-version: "202601"
   });
 });
 
+describe("writer rejects invalid profile names", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = tempDir();
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("rejects path traversal in saveOAuthTokens", async () => {
+    await expect(saveOAuthTokens({ accessToken: "tok" }, { profile: "../etc/passwd", home: dir })).rejects.toThrow(
+      TypeError,
+    );
+    await expect(saveOAuthTokens({ accessToken: "tok" }, { profile: "foo/bar", home: dir })).rejects.toThrow(TypeError);
+    await expect(saveOAuthTokens({ accessToken: "tok" }, { profile: "", home: dir })).rejects.toThrow(TypeError);
+  });
+
+  it("rejects path traversal in saveOAuthClientCredentials", async () => {
+    await expect(
+      saveOAuthClientCredentials({ clientId: "cid", clientSecret: "cs" }, { profile: "../x", home: dir }),
+    ).rejects.toThrow(TypeError);
+  });
+
+  it("rejects path traversal in clearOAuthTokens", async () => {
+    await expect(clearOAuthTokens({ profile: "../x", home: dir })).rejects.toThrow(TypeError);
+  });
+});
+
 describe("saveOAuthClientCredentials", () => {
   let dir: string;
 

@@ -85,6 +85,14 @@ describe("loadConfigFile", () => {
     expect(result.path).toBeUndefined();
   });
 
+  it("rejects profile names with path traversal", async () => {
+    await expect(loadConfigFile({ profile: "../etc/passwd", home: dir })).rejects.toThrow(TypeError);
+    await expect(loadConfigFile({ profile: "foo/bar", home: dir })).rejects.toThrow(TypeError);
+    await expect(loadConfigFile({ profile: "foo\\bar", home: dir })).rejects.toThrow(TypeError);
+    await expect(loadConfigFile({ profile: "..", home: dir })).rejects.toThrow(TypeError);
+    await expect(loadConfigFile({ profile: "", home: dir })).rejects.toThrow(TypeError);
+  });
+
   it("parses complex YAML config", async () => {
     await mkdir(dir, { recursive: true });
     await writeFile(

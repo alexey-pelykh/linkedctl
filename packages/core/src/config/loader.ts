@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { parse } from "yaml";
 
+import { isValidProfileName } from "./validate.js";
+
 export const CONFIG_DIR = ".linkedctl";
 export const DEFAULT_API_VERSION = "202601";
 const CONFIG_FILE = ".linkedctl.yaml";
@@ -32,6 +34,9 @@ export async function loadConfigFile(options?: {
   const cwd = options?.cwd ?? process.cwd();
 
   if (options?.profile !== undefined) {
+    if (!isValidProfileName(options.profile)) {
+      throw new TypeError(`Invalid profile name: "${options.profile}"`);
+    }
     const path = join(home, CONFIG_DIR, `${options.profile}.yaml`);
     return readYamlFile(path);
   }
