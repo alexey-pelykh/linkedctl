@@ -16,6 +16,10 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
       warnings: [],
     }),
     getCurrentPersonUrn: vi.fn().mockResolvedValue("urn:li:person:person123"),
+    listOrganizations: vi.fn().mockResolvedValue({
+      elements: [],
+      paging: { count: 100, start: 0 },
+    }),
     listPosts: vi.fn().mockResolvedValue({
       elements: [
         {
@@ -116,5 +120,66 @@ describe("post list", () => {
     program.exitOverride();
 
     await expect(program.parseAsync(["node", "linkedctl", "post", "list"])).rejects.toThrow(/Failed to list posts/);
+  });
+
+  describe("--as-org", () => {
+    it("lists posts as organization", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValueOnce({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "list", "--as-org", "98765"]);
+
+      expect(coreMock.listPosts).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          author: "urn:li:organization:98765",
+        }),
+      );
+      expect(coreMock.getCurrentPersonUrn).not.toHaveBeenCalled();
+    });
+
+    it("requires r_organization_social scope when --as-org is used", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValueOnce({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "list", "--as-org", "98765"]);
+
+      expect(coreMock.resolveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiredScopes: expect.arrayContaining(["r_organization_social"]),
+        }),
+      );
+    });
+
+    it("does not require r_organization_social scope for personal listing", async () => {
+      const program = createProgram();
+      await program.parseAsync(["node", "linkedctl", "post", "list"]);
+
+      expect(coreMock.resolveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiredScopes: expect.not.arrayContaining(["r_organization_social"]),
+        }),
+      );
+    });
+
+    it("rejects --as-org when user is not an administrator", async () => {
+      vi.mocked(coreMock.listOrganizations).mockResolvedValueOnce({
+        elements: [],
+        paging: { count: 100, start: 0 },
+      });
+
+      const program = createProgram();
+      program.exitOverride();
+
+      await expect(program.parseAsync(["node", "linkedctl", "post", "list", "--as-org", "99999"])).rejects.toThrow(
+        /not an administrator of organization 99999/,
+      );
+    });
   });
 });

@@ -834,23 +834,54 @@ export function createMcpServer(): McpServer {
     "post_list",
     {
       title: "List Posts",
-      description: "List the authenticated user's LinkedIn posts with pagination",
+      description: "List LinkedIn posts with pagination",
       inputSchema: {
         count: z.number().optional().describe("Number of posts to return (default 10, max 100)"),
         start: z.number().optional().describe("Starting index for pagination (default 0)"),
+        as_org: z
+          .string()
+          .optional()
+          .describe(
+            "List posts of an organization (numeric organization ID). The authenticated user must be an admin.",
+          ),
         profile: z.string().optional().describe("Profile name to use from config file"),
       },
     },
     async (args) => {
+      const requiredScopes = ["openid", "profile", "email", "w_member_social"];
+      if (args.as_org !== undefined) {
+        requiredScopes.push("r_organization_social");
+      }
+
       const { config } = await resolveConfig({
         profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        requiredScopes,
       });
       const accessToken = config.oauth?.accessToken ?? "";
       const apiVersion = config.apiVersion ?? "";
       const client = new LinkedInClient({ accessToken, apiVersion });
 
-      const authorUrn = await getCurrentPersonUrn(client);
+      let authorUrn: string;
+      if (args.as_org !== undefined) {
+        const orgUrn = `urn:li:organization:${args.as_org}`;
+        const response = await listOrganizations(client, { count: 100 });
+        const isAdmin = response.elements.some((acl) => acl.organization === orgUrn);
+        if (!isAdmin) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `You are not an administrator of organization ${args.as_org}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        authorUrn = orgUrn;
+      } else {
+        authorUrn = await getCurrentPersonUrn(client);
+      }
+
       const response = await listPosts(client, {
         author: authorUrn,
         count: args.count,

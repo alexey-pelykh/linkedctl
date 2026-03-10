@@ -1646,6 +1646,73 @@ describe("createMcpServer", () => {
         start: 10,
       });
     });
+
+    it("lists posts as organization when as_org is provided", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listOrganizations).mockResolvedValue({
+        elements: [{ organization: "urn:li:organization:98765", role: "ADMINISTRATOR", state: "APPROVED" }],
+        paging: { count: 100, start: 0 },
+      });
+      vi.mocked(listPosts).mockResolvedValue({
+        elements: [],
+        paging: { count: 10, start: 0 },
+      });
+
+      const result = await client.callTool({
+        name: "post_list",
+        arguments: { as_org: "98765" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiredScopes: expect.arrayContaining(["r_organization_social"]),
+        }),
+      );
+      expect(getCurrentPersonUrn).not.toHaveBeenCalled();
+      expect(listPosts).toHaveBeenCalledWith(expect.anything(), {
+        author: "urn:li:organization:98765",
+        count: undefined,
+        start: undefined,
+      });
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("elements");
+    });
+
+    it("rejects as_org when user is not an administrator", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listOrganizations).mockResolvedValue({
+        elements: [],
+        paging: { count: 100, start: 0 },
+      });
+
+      const result = await client.callTool({
+        name: "post_list",
+        arguments: { as_org: "99999" },
+      });
+
+      expect(result.content).toEqual([{ type: "text", text: "You are not an administrator of organization 99999" }]);
+      expect(result.isError).toBe(true);
+      expect(listPosts).not.toHaveBeenCalled();
+    });
   });
 
   describe("post_update", () => {
