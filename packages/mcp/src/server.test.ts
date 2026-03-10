@@ -42,6 +42,8 @@ vi.mock("@linkedctl/core", () => ({
   listOrganizations: vi.fn(),
   getOrganization: vi.fn(),
   getOrganizationFollowerCount: vi.fn(),
+  getPostAnalytics: vi.fn(),
+  getMemberAnalytics: vi.fn(),
   SUPPORTED_IMAGE_TYPES: new Map([
     [".jpg", "image/jpeg"],
     [".jpeg", "image/jpeg"],
@@ -83,6 +85,8 @@ import {
   listOrganizations,
   getOrganization,
   getOrganizationFollowerCount,
+  getPostAnalytics,
+  getMemberAnalytics,
   loadConfigFile,
   validateConfig,
   getTokenExpiry,
@@ -138,6 +142,8 @@ describe("createMcpServer", () => {
     expect(toolNames).toContain("org_list");
     expect(toolNames).toContain("org_get");
     expect(toolNames).toContain("org_followers");
+    expect(toolNames).toContain("stats_post");
+    expect(toolNames).toContain("stats_me");
   });
 
   describe("whoami", () => {
@@ -2462,6 +2468,222 @@ describe("createMcpServer", () => {
       const parsed = JSON.parse(text) as Record<string, unknown>;
       expect(parsed).toHaveProperty("organization", "urn:li:organization:12345");
       expect(parsed).toHaveProperty("followerCount", 5000);
+    });
+  });
+
+  describe("stats_post", () => {
+    it("returns analytics for a post with default aggregation", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      const mockAnalytics = {
+        impressions: { status: "success", dataPoints: [{ count: 1000 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 800 }] },
+        reactions: { status: "success", dataPoints: [{ count: 50 }] },
+        comments: { status: "success", dataPoints: [{ count: 10 }] },
+        reshares: { status: "success", dataPoints: [{ count: 5 }] },
+      };
+      vi.mocked(getPostAnalytics).mockResolvedValue(mockAnalytics);
+
+      const result = await client.callTool({
+        name: "stats_post",
+        arguments: { post_urn: "urn:li:share:123" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+      });
+      expect(getPostAnalytics).toHaveBeenCalledWith(expect.anything(), {
+        postUrn: "urn:li:share:123",
+        aggregation: undefined,
+        dateRange: undefined,
+      });
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("impressions");
+      expect(parsed).toHaveProperty("membersReached");
+      expect(parsed).toHaveProperty("reactions");
+      expect(parsed).toHaveProperty("comments");
+      expect(parsed).toHaveProperty("reshares");
+    });
+
+    it("passes aggregation and date range when provided", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      vi.mocked(getPostAnalytics).mockResolvedValue({
+        impressions: { status: "excluded", reason: "not supported" },
+        membersReached: { status: "excluded", reason: "not supported" },
+        reactions: { status: "success", dataPoints: [{ count: 3 }] },
+        comments: { status: "success", dataPoints: [{ count: 1 }] },
+        reshares: { status: "success", dataPoints: [{ count: 0 }] },
+      });
+
+      await client.callTool({
+        name: "stats_post",
+        arguments: {
+          post_urn: "urn:li:share:456",
+          aggregation: "DAILY",
+          from: "2025-01-01",
+          to: "2025-01-31",
+        },
+      });
+
+      expect(getPostAnalytics).toHaveBeenCalledWith(expect.anything(), {
+        postUrn: "urn:li:share:456",
+        aggregation: "DAILY",
+        dateRange: {
+          start: { year: 2025, month: 1, day: 1 },
+          end: { year: 2025, month: 1, day: 31 },
+        },
+      });
+    });
+
+    it("passes profile parameter to resolveConfig", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      vi.mocked(getPostAnalytics).mockResolvedValue({
+        impressions: { status: "success", dataPoints: [{ count: 0 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 0 }] },
+        reactions: { status: "success", dataPoints: [{ count: 0 }] },
+        comments: { status: "success", dataPoints: [{ count: 0 }] },
+        reshares: { status: "success", dataPoints: [{ count: 0 }] },
+      });
+
+      await client.callTool({
+        name: "stats_post",
+        arguments: { post_urn: "urn:li:share:789", profile: "analytics" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "analytics",
+        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+      });
+    });
+  });
+
+  describe("stats_me", () => {
+    it("returns lifetime aggregate stats without date range", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      const mockAnalytics = {
+        impressions: { status: "success", dataPoints: [{ count: 50000 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 30000 }] },
+        reactions: { status: "success", dataPoints: [{ count: 2000 }] },
+        comments: { status: "success", dataPoints: [{ count: 500 }] },
+        reshares: { status: "success", dataPoints: [{ count: 200 }] },
+      };
+      vi.mocked(getMemberAnalytics).mockResolvedValue(mockAnalytics);
+
+      const result = await client.callTool({
+        name: "stats_me",
+        arguments: {},
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+      });
+      expect(getMemberAnalytics).toHaveBeenCalledWith(expect.anything(), {
+        aggregation: undefined,
+        dateRange: undefined,
+      });
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("impressions");
+      expect(parsed).toHaveProperty("reshares");
+    });
+
+    it("passes date range when from and to are provided", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      vi.mocked(getMemberAnalytics).mockResolvedValue({
+        impressions: { status: "success", dataPoints: [{ count: 100 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 80 }] },
+        reactions: { status: "success", dataPoints: [{ count: 10 }] },
+        comments: { status: "success", dataPoints: [{ count: 2 }] },
+        reshares: { status: "success", dataPoints: [{ count: 1 }] },
+      });
+
+      await client.callTool({
+        name: "stats_me",
+        arguments: { from: "2025-03-01", to: "2025-03-10" },
+      });
+
+      expect(getMemberAnalytics).toHaveBeenCalledWith(expect.anything(), {
+        aggregation: undefined,
+        dateRange: {
+          start: { year: 2025, month: 3, day: 1 },
+          end: { year: 2025, month: 3, day: 10 },
+        },
+      });
+    });
+
+    it("returns lifetime totals when no date range is provided", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      vi.mocked(getMemberAnalytics).mockResolvedValue({
+        impressions: { status: "success", dataPoints: [{ count: 99999 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 50000 }] },
+        reactions: { status: "success", dataPoints: [{ count: 5000 }] },
+        comments: { status: "success", dataPoints: [{ count: 1000 }] },
+        reshares: { status: "success", dataPoints: [{ count: 500 }] },
+      });
+
+      const result = await client.callTool({
+        name: "stats_me",
+        arguments: {},
+      });
+
+      expect(getMemberAnalytics).toHaveBeenCalledWith(expect.anything(), {
+        aggregation: undefined,
+        dateRange: undefined,
+      });
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("impressions");
+    });
+
+    it("passes profile parameter to resolveConfig", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      vi.mocked(getMemberAnalytics).mockResolvedValue({
+        impressions: { status: "success", dataPoints: [{ count: 0 }] },
+        membersReached: { status: "success", dataPoints: [{ count: 0 }] },
+        reactions: { status: "success", dataPoints: [{ count: 0 }] },
+        comments: { status: "success", dataPoints: [{ count: 0 }] },
+        reshares: { status: "success", dataPoints: [{ count: 0 }] },
+      });
+
+      await client.callTool({
+        name: "stats_me",
+        arguments: { profile: "community-mgmt" },
+      });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "community-mgmt",
+        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+      });
     });
   });
 });
