@@ -3,13 +3,17 @@
 
 import { Command } from "commander";
 import { resolveConfig, LinkedInClient, getCurrentPersonUrn, deleteReaction, LinkedInApiError } from "@linkedctl/core";
+import { confirmOrAbort } from "../../confirm.js";
 
 interface DeleteOpts {
   asOrg?: string | undefined;
+  force?: boolean | undefined;
 }
 
 export async function deleteReactionAction(entityUrn: string, opts: DeleteOpts, cmd: Command): Promise<void> {
   const globals = cmd.optsWithGlobals<{ profile?: string | undefined }>();
+
+  await confirmOrAbort(`Delete reaction on "${entityUrn}"?`, opts.force === true);
 
   const { config } = await resolveConfig({
     profile: globals.profile,
@@ -36,6 +40,7 @@ export function deleteReactionCommand(): Command {
   const cmd = new Command("delete");
   cmd.description("Remove your reaction from a LinkedIn post");
   cmd.argument("<entity-urn>", "entity URN to remove reaction from (e.g. urn:li:share:abc123)");
+  cmd.option("-f, --force", "skip confirmation prompt");
   cmd.option("--as-org <org-id>", "act as organization (numeric ID, e.g. 12345)");
 
   cmd.addHelpText(

@@ -20,7 +20,12 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
   };
 });
 
+vi.mock("../../confirm.js", () => ({
+  confirmOrAbort: vi.fn().mockResolvedValue(undefined),
+}));
+
 const coreMock = await import("@linkedctl/core");
+const confirmMock = await import("../../confirm.js");
 
 describe("reaction delete", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
@@ -54,6 +59,33 @@ describe("reaction delete", () => {
         actor: "urn:li:person:person123",
       }),
     );
+  });
+
+  it("prompts for confirmation", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "reaction", "delete", "urn:li:share:abc123"]);
+
+    expect(confirmMock.confirmOrAbort).toHaveBeenCalledWith('Delete reaction on "urn:li:share:abc123"?', false);
+  });
+
+  it("skips confirmation with --force", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "reaction", "delete", "urn:li:share:abc123", "--force"]);
+
+    expect(confirmMock.confirmOrAbort).toHaveBeenCalledWith('Delete reaction on "urn:li:share:abc123"?', true);
+  });
+
+  it("aborts when user declines confirmation", async () => {
+    vi.mocked(confirmMock.confirmOrAbort).mockRejectedValueOnce(new Error("Aborted."));
+
+    const program = createProgram();
+    program.exitOverride();
+
+    await expect(
+      program.parseAsync(["node", "linkedctl", "reaction", "delete", "urn:li:share:abc123"]),
+    ).rejects.toThrow(/Aborted/);
+
+    expect(coreMock.deleteReaction).not.toHaveBeenCalled();
   });
 
   it("uses organization URN as actor when --as-org is specified", async () => {

@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { resolveConfig, LinkedInClient, deleteComment, LinkedInApiError } from "@linkedctl/core";
+import { confirmOrAbort } from "../../confirm.js";
 
 export function createCommentDeleteCommand(): Command {
   const cmd = new Command("delete");
@@ -16,8 +17,12 @@ Examples:
   linkedctl comment delete "urn:li:comment:(urn:li:activity:123,456)"`,
   );
 
-  cmd.action(async (commentUrn: string, _opts: Record<string, unknown>, actionCmd: Command) => {
+  cmd.option("-f, --force", "skip confirmation prompt");
+
+  cmd.action(async (commentUrn: string, opts: Record<string, unknown>, actionCmd: Command) => {
     const globals = actionCmd.optsWithGlobals<{ profile?: string | undefined; quiet?: boolean | undefined }>();
+
+    await confirmOrAbort(`Delete comment "${commentUrn}"?`, opts["force"] === true);
 
     const { config } = await resolveConfig({
       profile: globals.profile,
@@ -29,7 +34,7 @@ Examples:
 
     try {
       await deleteComment(client, { commentUrn });
-      console.error("Comment deleted.");
+      console.log("Comment deleted.");
     } catch (error) {
       if (error instanceof LinkedInApiError) {
         throw new Error(`Failed to delete comment: ${error.message}`);

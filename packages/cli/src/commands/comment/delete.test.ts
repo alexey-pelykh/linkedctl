@@ -19,22 +19,19 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
   };
 });
 
+vi.mock("../../confirm.js", () => ({
+  confirmOrAbort: vi.fn().mockResolvedValue(undefined),
+}));
+
 const coreMock = await import("@linkedctl/core");
+const confirmMock = await import("../../confirm.js");
 
 describe("comment delete", () => {
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.mocked(coreMock.resolveConfig).mockResolvedValue({
-      config: {
-        oauth: { accessToken: "test-token" },
-        apiVersion: "202601",
-      },
-      warnings: [],
-    });
-    vi.mocked(coreMock.deleteComment).mockResolvedValue(undefined);
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -51,7 +48,47 @@ describe("comment delete", () => {
         commentUrn: "urn:li:comment:(urn:li:activity:100,200)",
       }),
     );
-    expect(consoleErrorSpy).toHaveBeenCalledWith("Comment deleted.");
+    expect(consoleSpy).toHaveBeenCalledWith("Comment deleted.");
+  });
+
+  it("prompts for confirmation", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "comment", "delete", "urn:li:comment:(urn:li:activity:100,200)"]);
+
+    expect(confirmMock.confirmOrAbort).toHaveBeenCalledWith(
+      'Delete comment "urn:li:comment:(urn:li:activity:100,200)"?',
+      false,
+    );
+  });
+
+  it("skips confirmation with --force", async () => {
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "linkedctl",
+      "comment",
+      "delete",
+      "urn:li:comment:(urn:li:activity:100,200)",
+      "--force",
+    ]);
+
+    expect(confirmMock.confirmOrAbort).toHaveBeenCalledWith(
+      'Delete comment "urn:li:comment:(urn:li:activity:100,200)"?',
+      true,
+    );
+  });
+
+  it("aborts when user declines confirmation", async () => {
+    vi.mocked(confirmMock.confirmOrAbort).mockRejectedValueOnce(new Error("Aborted."));
+
+    const program = createProgram();
+    program.exitOverride();
+
+    await expect(
+      program.parseAsync(["node", "linkedctl", "comment", "delete", "urn:li:comment:(urn:li:activity:100,200)"]),
+    ).rejects.toThrow(/Aborted/);
+
+    expect(coreMock.deleteComment).not.toHaveBeenCalled();
   });
 
   it("wraps API errors with actionable message", async () => {
