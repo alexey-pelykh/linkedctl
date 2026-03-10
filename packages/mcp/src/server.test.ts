@@ -44,6 +44,7 @@ vi.mock("@linkedctl/core", () => ({
   getOrganizationFollowerCount: vi.fn(),
   getPostAnalytics: vi.fn(),
   getMemberAnalytics: vi.fn(),
+  getOrgStats: vi.fn(),
   SUPPORTED_IMAGE_TYPES: new Map([
     [".jpg", "image/jpeg"],
     [".jpeg", "image/jpeg"],
@@ -87,6 +88,7 @@ import {
   getOrganizationFollowerCount,
   getPostAnalytics,
   getMemberAnalytics,
+  getOrgStats,
   loadConfigFile,
   validateConfig,
   getTokenExpiry,
@@ -144,6 +146,7 @@ describe("createMcpServer", () => {
     expect(toolNames).toContain("org_followers");
     expect(toolNames).toContain("stats_post");
     expect(toolNames).toContain("stats_me");
+    expect(toolNames).toContain("stats_org");
   });
 
   describe("whoami", () => {
@@ -2736,6 +2739,141 @@ describe("createMcpServer", () => {
         profile: "community-mgmt",
         requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
       });
+    });
+  });
+
+  describe("stats_org", () => {
+    it("returns lifetime aggregate stats for an organization", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+
+      const mockResponse = {
+        elements: [
+          {
+            organizationalEntity: "urn:li:organization:12345",
+            totalShareStatistics: {
+              clickCount: 10,
+              commentCount: 5,
+              engagement: 0.02,
+              impressionCount: 500,
+              likeCount: 20,
+              shareCount: 3,
+              uniqueImpressionsCount: 400,
+            },
+          },
+        ],
+        paging: { count: 1, start: 0 },
+      };
+      vi.mocked(getOrgStats).mockResolvedValue(mockResponse);
+
+      const result = await client.callTool({ name: "stats_org", arguments: { id: "12345" } });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: undefined,
+        requiredScopes: ["rw_organization_admin"],
+      });
+      expect(getOrgStats).toHaveBeenCalledWith(expect.anything(), {
+        organizationUrn: "urn:li:organization:12345",
+        timeGranularity: undefined,
+        timeRange: undefined,
+        shares: undefined,
+      });
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      expect(parsed).toHaveProperty("elements");
+    });
+
+    it("passes time range and granularity", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+      vi.mocked(getOrgStats).mockResolvedValue({ elements: [], paging: { count: 0, start: 0 } });
+
+      await client.callTool({
+        name: "stats_org",
+        arguments: { id: "12345", time_granularity: "MONTH", start: "2026-01-01", end: "2026-02-01" },
+      });
+
+      expect(getOrgStats).toHaveBeenCalledWith(expect.anything(), {
+        organizationUrn: "urn:li:organization:12345",
+        timeGranularity: "MONTH",
+        timeRange: {
+          start: new Date("2026-01-01").getTime(),
+          end: new Date("2026-02-01").getTime(),
+        },
+        shares: undefined,
+      });
+    });
+
+    it("passes share URNs when provided", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+      vi.mocked(getOrgStats).mockResolvedValue({ elements: [], paging: { count: 0, start: 0 } });
+
+      await client.callTool({
+        name: "stats_org",
+        arguments: { id: "12345", shares: "urn:li:share:aaa,urn:li:share:bbb" },
+      });
+
+      expect(getOrgStats).toHaveBeenCalledWith(expect.anything(), {
+        organizationUrn: "urn:li:organization:12345",
+        timeGranularity: undefined,
+        timeRange: undefined,
+        shares: ["urn:li:share:aaa", "urn:li:share:bbb"],
+      });
+    });
+
+    it("passes profile parameter to resolveConfig", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: { oauth: { accessToken: "tok" }, apiVersion: "202601" },
+        warnings: [],
+      } as never);
+      vi.mocked(getOrgStats).mockResolvedValue({ elements: [], paging: { count: 0, start: 0 } });
+
+      await client.callTool({ name: "stats_org", arguments: { id: "12345", profile: "work" } });
+
+      expect(resolveConfig).toHaveBeenCalledWith({
+        profile: "work",
+        requiredScopes: ["rw_organization_admin"],
+      });
+    });
+
+    it("returns error when start is provided without end", async () => {
+      const result = await client.callTool({
+        name: "stats_org",
+        arguments: { id: "12345", start: "2026-01-01" },
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      expect(text).toContain("Both start and end must be provided");
+    });
+
+    it("returns error when end is provided without start", async () => {
+      const result = await client.callTool({
+        name: "stats_org",
+        arguments: { id: "12345", end: "2026-02-01" },
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      expect(text).toContain("Both start and end must be provided");
+    });
+
+    it("returns error when time_granularity is provided without date range", async () => {
+      const result = await client.callTool({
+        name: "stats_org",
+        arguments: { id: "12345", time_granularity: "DAY" },
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+      expect(text).toContain("time_granularity requires both start and end");
     });
   });
 });
