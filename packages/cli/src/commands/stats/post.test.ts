@@ -17,6 +17,24 @@ vi.mock("@linkedctl/core", async (importOriginal) => {
       warnings: [],
     }),
     getPostAnalytics: vi.fn(),
+    getOrgStats: vi.fn().mockResolvedValue({
+      elements: [
+        {
+          organizationalEntity: "urn:li:organization:12345",
+          share: "urn:li:share:999",
+          totalShareStatistics: {
+            clickCount: 42,
+            commentCount: 5,
+            engagement: 0.03,
+            impressionCount: 500,
+            likeCount: 20,
+            shareCount: 3,
+            uniqueImpressionsCount: 400,
+          },
+        },
+      ],
+      paging: { count: 1, start: 0 },
+    }),
   };
 });
 
@@ -30,7 +48,7 @@ const SAMPLE_ANALYTICS: PostAnalytics = {
   reshares: { status: "success", dataPoints: [{ count: 5 }] },
 };
 
-describe("stats post", () => {
+describe("stats post (member analytics)", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let stderrSpy: ReturnType<typeof vi.spyOn>;
 
@@ -219,5 +237,115 @@ describe("stats post", () => {
     } finally {
       Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, writable: true });
     }
+  });
+});
+
+describe("stats post --org (org share statistics)", () => {
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches per-post org statistics", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "stats", "post", "urn:li:share:999", "--org", "12345"]);
+
+    expect(coreMock.getOrgStats).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        organizationUrn: "urn:li:organization:12345",
+        shares: ["urn:li:share:999"],
+      }),
+    );
+    expect(consoleSpy).toHaveBeenCalled();
+  });
+
+  it("outputs JSON when --format json is specified", async () => {
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "linkedctl",
+      "stats",
+      "post",
+      "urn:li:share:999",
+      "--org",
+      "12345",
+      "--format",
+      "json",
+    ]);
+
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    const parsed = JSON.parse(output) as Record<string, unknown>;
+    expect(parsed).toHaveProperty("elements");
+  });
+
+  it("resolves config with required scopes", async () => {
+    const program = createProgram();
+    await program.parseAsync(["node", "linkedctl", "stats", "post", "urn:li:share:999", "--org", "12345"]);
+
+    expect(coreMock.resolveConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiredScopes: ["rw_organization_admin"],
+      }),
+    );
+  });
+
+  it("resolves config with profile from global options", async () => {
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "linkedctl",
+      "--profile",
+      "analytics",
+      "stats",
+      "post",
+      "urn:li:share:999",
+      "--org",
+      "12345",
+    ]);
+
+    expect(coreMock.resolveConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: "analytics",
+      }),
+    );
+  });
+
+  it("wraps API errors with actionable message", async () => {
+    const { LinkedInApiError } = await import("@linkedctl/core");
+    vi.mocked(coreMock.getOrgStats).mockRejectedValueOnce(new LinkedInApiError("Forbidden", 403));
+
+    const program = createProgram();
+    await expect(
+      program.parseAsync(["node", "linkedctl", "stats", "post", "urn:li:share:999", "--org", "12345"]),
+    ).rejects.toThrow(/Failed to get post statistics/);
+  });
+
+  it("handles empty results gracefully in table format", async () => {
+    vi.mocked(coreMock.getOrgStats).mockResolvedValueOnce({
+      elements: [],
+      paging: { count: 0, start: 0 },
+    });
+
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "linkedctl",
+      "stats",
+      "post",
+      "urn:li:share:999",
+      "--org",
+      "12345",
+      "--format",
+      "table",
+    ]);
+
+    expect(consoleSpy).toHaveBeenCalledWith("No statistics found for this post.");
   });
 });
