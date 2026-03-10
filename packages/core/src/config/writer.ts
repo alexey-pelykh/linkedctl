@@ -8,6 +8,7 @@ import { parse, stringify } from "yaml";
 import { existsSync } from "node:fs";
 
 import { CONFIG_DIR } from "./loader.js";
+import { isValidProfileName } from "./validate.js";
 
 const CONFIG_FILE = ".linkedctl.yaml";
 const CONFIG_FILE_MODE = 0o600;
@@ -151,6 +152,9 @@ function resolveWritePath(options?: {
   const cwd = options?.cwd ?? process.cwd();
 
   if (options?.profile !== undefined) {
+    if (!isValidProfileName(options.profile)) {
+      throw new TypeError(`Invalid profile name: "${options.profile}"`);
+    }
     return join(home, CONFIG_DIR, `${options.profile}.yaml`);
   }
 
