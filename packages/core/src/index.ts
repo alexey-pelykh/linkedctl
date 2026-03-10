@@ -112,3 +112,18 @@ export type {
   DeleteCommentOptions,
 } from "./comments/comments-service.js";
 export type { Comment } from "./comments/types.js";
+export { getPostAnalytics, getMemberAnalytics } from "./member-stats/member-stats-service.js";
+export type { GetPostAnalyticsOptions, GetMemberAnalyticsOptions } from "./member-stats/member-stats-service.js";
+export { ANALYTICS_METRIC_TYPES } from "./member-stats/types.js";
+export type {
+  AnalyticsMetricType,
+  AnalyticsAggregation,
+  AnalyticsDate,
+  AnalyticsDateRange,
+  AnalyticsDataPoint,
+  MetricSuccess,
+  MetricUnavailable,
+  MetricExcluded,
+  MetricResult,
+  PostAnalytics,
+} from "./member-stats/types.js";
