@@ -5,6 +5,7 @@ This skill teaches linkedctl MCP workflow patterns, conventions, and error handl
 ## Prerequisites
 
 A valid LinkedIn OAuth2 access token is required. Configure it via:
+
 - Environment variable: `LINKEDCTL_ACCESS_TOKEN`
 - Config file: `~/.linkedctl.yaml` (or per-profile configs in `~/.linkedctl/`)
 
@@ -40,6 +41,7 @@ whoami → post_create → post_list / post_get → post_update → post_delete
 **Creating a post:**
 
 `post_create` supports:
+
 - **Text-only**: Just `commentary` text
 - **With image**: Provide `image_path` (local file) or `image_urn` (pre-uploaded)
 - **With video**: Provide `video_path` (local file) or `video_urn` (pre-uploaded)
@@ -121,37 +123,37 @@ All analytics tools require the Community Management API product.
 
 ## Error Patterns
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| "Authentication failed" | Invalid or expired token | Re-authenticate, check `auth_status` |
-| "NOT_FOUND" | Invalid URN or deleted resource | Verify URN with `post_list` or `comment_list` |
-| "ACCESS_DENIED" | Missing API scope or permission | Check required scopes for the operation |
-| "RATE_LIMITED" | Too many API requests | Wait and retry (check `retry-after` hint) |
-| "VALIDATION_ERROR" | Invalid input parameters | Check parameter formats and constraints |
+| Error                   | Cause                           | Fix                                           |
+| ----------------------- | ------------------------------- | --------------------------------------------- |
+| "Authentication failed" | Invalid or expired token        | Re-authenticate, check `auth_status`          |
+| "NOT_FOUND"             | Invalid URN or deleted resource | Verify URN with `post_list` or `comment_list` |
+| "ACCESS_DENIED"         | Missing API scope or permission | Check required scopes for the operation       |
+| "RATE_LIMITED"          | Too many API requests           | Wait and retry (check `retry-after` hint)     |
+| "VALIDATION_ERROR"      | Invalid input parameters        | Check parameter formats and constraints       |
 
 ## Tool Reference
 
-| Tool | Category | Purpose |
-|------|----------|---------|
-| `whoami` | auth | Show current user identity |
-| `auth_status` | auth | Check token status and expiry |
-| `auth_revoke` | auth | Revoke token and clear credentials |
-| `post_create` | posts | Create a post with optional media |
-| `post_get` | posts | Fetch a single post by URN |
-| `post_list` | posts | List posts with pagination |
-| `post_update` | posts | Update post commentary |
-| `post_delete` | posts | Delete a post |
-| `document_upload` | media | Upload a document (PDF, DOCX, etc.) |
-| `comment_create` | engagement | Comment on a post |
-| `comment_list` | engagement | List comments on a post |
-| `comment_get` | engagement | Get a specific comment |
-| `comment_delete` | engagement | Delete a comment |
-| `reaction_create` | engagement | Add a reaction to a post |
-| `reaction_list` | engagement | List reactions on a post |
-| `reaction_delete` | engagement | Remove a reaction |
-| `org_list` | organizations | List administered organizations |
-| `org_get` | organizations | Get organization details |
-| `org_followers` | organizations | Get organization follower count |
-| `stats_post` | analytics | Post-level analytics |
-| `stats_me` | analytics | Aggregated personal analytics |
-| `stats_org` | analytics | Organization share statistics |
+| Tool              | Category      | Purpose                             |
+| ----------------- | ------------- | ----------------------------------- |
+| `whoami`          | auth          | Show current user identity          |
+| `auth_status`     | auth          | Check token status and expiry       |
+| `auth_revoke`     | auth          | Revoke token and clear credentials  |
+| `post_create`     | posts         | Create a post with optional media   |
+| `post_get`        | posts         | Fetch a single post by URN          |
+| `post_list`       | posts         | List posts with pagination          |
+| `post_update`     | posts         | Update post commentary              |
+| `post_delete`     | posts         | Delete a post                       |
+| `document_upload` | media         | Upload a document (PDF, DOCX, etc.) |
+| `comment_create`  | engagement    | Comment on a post                   |
+| `comment_list`    | engagement    | List comments on a post             |
+| `comment_get`     | engagement    | Get a specific comment              |
+| `comment_delete`  | engagement    | Delete a comment                    |
+| `reaction_create` | engagement    | Add a reaction to a post            |
+| `reaction_list`   | engagement    | List reactions on a post            |
+| `reaction_delete` | engagement    | Remove a reaction                   |
+| `org_list`        | organizations | List administered organizations     |
+| `org_get`         | organizations | Get organization details            |
+| `org_followers`   | organizations | Get organization follower count     |
+| `stats_post`      | analytics     | Post-level analytics                |
+| `stats_me`        | analytics     | Aggregated personal analytics       |
+| `stats_org`       | analytics     | Organization share statistics       |
