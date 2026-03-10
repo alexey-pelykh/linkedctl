@@ -7,8 +7,6 @@ import { readFile, stat } from "node:fs/promises";
 import { extname } from "node:path";
 
 import {
-  resolveConfig,
-  LinkedInClient,
   getCurrentPersonUrn,
   createPost,
   getPost,
@@ -24,6 +22,8 @@ import {
   DOCUMENT_MAX_SIZE_BYTES,
 } from "@linkedctl/core";
 import type { PostContent, PostLifecycleState } from "@linkedctl/core";
+
+import { withClient } from "./with-client.js";
 
 export function registerPostTools(server: McpServer): void {
   server.registerTool(
@@ -134,101 +134,32 @@ export function registerPostTools(server: McpServer): void {
         requiredScopes.push("w_organization_social");
       }
 
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes,
-      });
-      // resolveConfig guarantees oauth.accessToken and apiVersion are defined
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
-
-      let authorUrn: string;
-      if (args.as_org !== undefined) {
-        const orgUrn = `urn:li:organization:${args.as_org}`;
-        const response = await listOrganizations(client, { count: 100 });
-        const isAdmin = response.elements.some((acl) => acl.organization === orgUrn);
-        if (!isAdmin) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `You are not an administrator of organization ${args.as_org}`,
-              },
-            ],
-            isError: true,
-          };
+      return withClient({ profile: args.profile, requiredScopes }, async (client) => {
+        let authorUrn: string;
+        if (args.as_org !== undefined) {
+          const orgUrn = `urn:li:organization:${args.as_org}`;
+          const response = await listOrganizations(client, { count: 100 });
+          const isAdmin = response.elements.some((acl) => acl.organization === orgUrn);
+          if (!isAdmin) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `You are not an administrator of organization ${args.as_org}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          authorUrn = orgUrn;
+        } else {
+          authorUrn = await getCurrentPersonUrn(client);
         }
-        authorUrn = orgUrn;
-      } else {
-        authorUrn = await getCurrentPersonUrn(client);
-      }
 
-      // Handle file-based uploads if no URN-based content was resolved
-      if (postContent === undefined) {
-        if (args.image_file !== undefined) {
-          const ext = extname(args.image_file).toLowerCase();
-          const contentType = SUPPORTED_IMAGE_TYPES.get(ext);
-          if (contentType === undefined) {
-            const supported = [...SUPPORTED_IMAGE_TYPES.keys()].join(", ");
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: `Unsupported image format "${ext}". Supported formats: ${supported}`,
-                },
-              ],
-              isError: true,
-            };
-          }
-          const data = new Uint8Array(await readFile(args.image_file));
-          const urn = await uploadImage(client, { owner: authorUrn, data, contentType });
-          postContent = { media: { id: urn } };
-        } else if (args.video_file !== undefined) {
-          const fileStat = await stat(args.video_file);
-          if (!fileStat.isFile()) {
-            return {
-              content: [{ type: "text" as const, text: `Not a file: ${args.video_file}` }],
-              isError: true,
-            };
-          }
-          const data = await readFile(args.video_file);
-          const urn = await uploadVideo(client, { owner: authorUrn, data });
-          postContent = { media: { id: urn } };
-        } else if (args.document_file !== undefined) {
-          const ext = extname(args.document_file).toLowerCase();
-          if (!DOCUMENT_EXTENSIONS.includes(ext as (typeof DOCUMENT_EXTENSIONS)[number])) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: `Unsupported file type "${ext}". Supported types: ${DOCUMENT_EXTENSIONS.join(", ")}`,
-                },
-              ],
-              isError: true,
-            };
-          }
-          const fileStat = await stat(args.document_file);
-          if (fileStat.size > DOCUMENT_MAX_SIZE_BYTES) {
-            const sizeMB = Math.round(fileStat.size / (1024 * 1024));
-            return {
-              content: [{ type: "text" as const, text: `File is ${sizeMB} MB, which exceeds the 100 MB limit.` }],
-              isError: true,
-            };
-          }
-          const data = new Uint8Array(await readFile(args.document_file));
-          const urn = await uploadDocument(client, { owner: authorUrn, data });
-          postContent = { media: { id: urn } };
-        } else if (args.image_files !== undefined) {
-          if (args.image_files.length < 2) {
-            return {
-              content: [{ type: "text" as const, text: "Multi-image file posts require at least 2 image file paths" }],
-              isError: true,
-            };
-          }
-          const urns: string[] = [];
-          for (const filePath of args.image_files) {
-            const ext = extname(filePath).toLowerCase();
+        // Handle file-based uploads if no URN-based content was resolved
+        if (postContent === undefined) {
+          if (args.image_file !== undefined) {
+            const ext = extname(args.image_file).toLowerCase();
             const contentType = SUPPORTED_IMAGE_TYPES.get(ext);
             if (contentType === undefined) {
               const supported = [...SUPPORTED_IMAGE_TYPES.keys()].join(", ");
@@ -236,34 +167,98 @@ export function registerPostTools(server: McpServer): void {
                 content: [
                   {
                     type: "text" as const,
-                    text: `Unsupported image format "${ext}" for file "${filePath}". Supported formats: ${supported}`,
+                    text: `Unsupported image format "${ext}". Supported formats: ${supported}`,
                   },
                 ],
                 isError: true,
               };
             }
-            const data = new Uint8Array(await readFile(filePath));
+            const data = new Uint8Array(await readFile(args.image_file));
             const urn = await uploadImage(client, { owner: authorUrn, data, contentType });
-            urns.push(urn);
+            postContent = { media: { id: urn } };
+          } else if (args.video_file !== undefined) {
+            const fileStat = await stat(args.video_file);
+            if (!fileStat.isFile()) {
+              return {
+                content: [{ type: "text" as const, text: `Not a file: ${args.video_file}` }],
+                isError: true,
+              };
+            }
+            const data = await readFile(args.video_file);
+            const urn = await uploadVideo(client, { owner: authorUrn, data });
+            postContent = { media: { id: urn } };
+          } else if (args.document_file !== undefined) {
+            const ext = extname(args.document_file).toLowerCase();
+            if (!DOCUMENT_EXTENSIONS.includes(ext as (typeof DOCUMENT_EXTENSIONS)[number])) {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Unsupported file type "${ext}". Supported types: ${DOCUMENT_EXTENSIONS.join(", ")}`,
+                  },
+                ],
+                isError: true,
+              };
+            }
+            const fileStat = await stat(args.document_file);
+            if (fileStat.size > DOCUMENT_MAX_SIZE_BYTES) {
+              const sizeMB = Math.round(fileStat.size / (1024 * 1024));
+              return {
+                content: [{ type: "text" as const, text: `File is ${sizeMB} MB, which exceeds the 100 MB limit.` }],
+                isError: true,
+              };
+            }
+            const data = new Uint8Array(await readFile(args.document_file));
+            const urn = await uploadDocument(client, { owner: authorUrn, data });
+            postContent = { media: { id: urn } };
+          } else if (args.image_files !== undefined) {
+            if (args.image_files.length < 2) {
+              return {
+                content: [
+                  { type: "text" as const, text: "Multi-image file posts require at least 2 image file paths" },
+                ],
+                isError: true,
+              };
+            }
+            const urns: string[] = [];
+            for (const filePath of args.image_files) {
+              const ext = extname(filePath).toLowerCase();
+              const contentType = SUPPORTED_IMAGE_TYPES.get(ext);
+              if (contentType === undefined) {
+                const supported = [...SUPPORTED_IMAGE_TYPES.keys()].join(", ");
+                return {
+                  content: [
+                    {
+                      type: "text" as const,
+                      text: `Unsupported image format "${ext}" for file "${filePath}". Supported formats: ${supported}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
+              const data = new Uint8Array(await readFile(filePath));
+              const urn = await uploadImage(client, { owner: authorUrn, data, contentType });
+              urns.push(urn);
+            }
+            postContent = { multiImage: { images: urns.map((id) => ({ id })) } };
           }
-          postContent = { multiImage: { images: urns.map((id) => ({ id })) } };
         }
-      }
 
-      const visibility = args.visibility ?? "PUBLIC";
-      const lifecycleState: PostLifecycleState = args.draft === true ? "DRAFT" : "PUBLISHED";
+        const visibility = args.visibility ?? "PUBLIC";
+        const lifecycleState: PostLifecycleState = args.draft === true ? "DRAFT" : "PUBLISHED";
 
-      const postUrn = await createPost(client, {
-        author: authorUrn,
-        text: args.text,
-        visibility,
-        content: postContent,
-        lifecycleState,
+        const postUrn = await createPost(client, {
+          author: authorUrn,
+          text: args.text,
+          visibility,
+          content: postContent,
+          lifecycleState,
+        });
+
+        return {
+          content: [{ type: "text" as const, text: `Post created: ${postUrn}` }],
+        };
       });
-
-      return {
-        content: [{ type: "text" as const, text: `Post created: ${postUrn}` }],
-      };
     },
   );
 
@@ -278,19 +273,19 @@ export function registerPostTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const post = await getPost(client, args.urn);
 
-      const post = await getPost(client, args.urn);
-
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(post, null, 2) }],
-      };
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(post, null, 2) }],
+          };
+        },
+      );
     },
   );
 
@@ -317,44 +312,38 @@ export function registerPostTools(server: McpServer): void {
         requiredScopes.push("r_organization_social");
       }
 
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes,
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
-
-      let authorUrn: string;
-      if (args.as_org !== undefined) {
-        const orgUrn = `urn:li:organization:${args.as_org}`;
-        const orgResponse = await listOrganizations(client, { count: 100 });
-        const isAdmin = orgResponse.elements.some((acl) => acl.organization === orgUrn);
-        if (!isAdmin) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `You are not an administrator of organization ${args.as_org}`,
-              },
-            ],
-            isError: true,
-          };
+      return withClient({ profile: args.profile, requiredScopes }, async (client) => {
+        let authorUrn: string;
+        if (args.as_org !== undefined) {
+          const orgUrn = `urn:li:organization:${args.as_org}`;
+          const orgResponse = await listOrganizations(client, { count: 100 });
+          const isAdmin = orgResponse.elements.some((acl) => acl.organization === orgUrn);
+          if (!isAdmin) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `You are not an administrator of organization ${args.as_org}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          authorUrn = orgUrn;
+        } else {
+          authorUrn = await getCurrentPersonUrn(client);
         }
-        authorUrn = orgUrn;
-      } else {
-        authorUrn = await getCurrentPersonUrn(client);
-      }
 
-      const response = await listPosts(client, {
-        author: authorUrn,
-        count: args.count,
-        start: args.start,
+        const response = await listPosts(client, {
+          author: authorUrn,
+          count: args.count,
+          start: args.start,
+        });
+
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+        };
       });
-
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
-      };
     },
   );
 
@@ -370,19 +359,19 @@ export function registerPostTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          await updatePost(client, args.urn, { text: args.text });
 
-      await updatePost(client, args.urn, { text: args.text });
-
-      return {
-        content: [{ type: "text" as const, text: `Post updated: ${args.urn}` }],
-      };
+          return {
+            content: [{ type: "text" as const, text: `Post updated: ${args.urn}` }],
+          };
+        },
+      );
     },
   );
 
@@ -397,19 +386,19 @@ export function registerPostTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          await deletePost(client, args.urn);
 
-      await deletePost(client, args.urn);
-
-      return {
-        content: [{ type: "text" as const, text: `Post deleted: ${args.urn}` }],
-      };
+          return {
+            content: [{ type: "text" as const, text: `Post deleted: ${args.urn}` }],
+          };
+        },
+      );
     },
   );
 }

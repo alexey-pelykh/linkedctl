@@ -4,8 +4,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { resolveConfig, LinkedInClient, getPostAnalytics, getMemberAnalytics, getOrgStats } from "@linkedctl/core";
+import { getPostAnalytics, getMemberAnalytics, getOrgStats } from "@linkedctl/core";
 import type { AnalyticsDateRange } from "@linkedctl/core";
+
+import { withClient } from "./with-client.js";
 
 /**
  * Parse optional from/to date strings (YYYY-MM-DD) into an AnalyticsDateRange.
@@ -49,24 +51,24 @@ export function registerStatsTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+        },
+        async (client) => {
+          const dateRange = parseDateRange(args.from, args.to);
+          const analytics = await getPostAnalytics(client, {
+            postUrn: args.post_urn,
+            aggregation: args.aggregation,
+            dateRange,
+          });
 
-      const dateRange = parseDateRange(args.from, args.to);
-      const analytics = await getPostAnalytics(client, {
-        postUrn: args.post_urn,
-        aggregation: args.aggregation,
-        dateRange,
-      });
-
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(analytics, null, 2) }],
-      };
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(analytics, null, 2) }],
+          };
+        },
+      );
     },
   );
 
@@ -93,23 +95,23 @@ export function registerStatsTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+        },
+        async (client) => {
+          const dateRange = parseDateRange(args.from, args.to);
+          const analytics = await getMemberAnalytics(client, {
+            aggregation: args.aggregation,
+            dateRange,
+          });
 
-      const dateRange = parseDateRange(args.from, args.to);
-      const analytics = await getMemberAnalytics(client, {
-        aggregation: args.aggregation,
-        dateRange,
-      });
-
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(analytics, null, 2) }],
-      };
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(analytics, null, 2) }],
+          };
+        },
+      );
     },
   );
 
@@ -155,40 +157,40 @@ export function registerStatsTools(server: McpServer): void {
         };
       }
 
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["rw_organization_admin"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["rw_organization_admin"],
+        },
+        async (client) => {
+          const organizationUrn = `urn:li:organization:${args.id}`;
 
-      const organizationUrn = `urn:li:organization:${args.id}`;
+          const timeGranularity = args.time_granularity;
+          const timeRange =
+            args.start !== undefined && args.end !== undefined
+              ? { start: new Date(args.start).getTime(), end: new Date(args.end).getTime() }
+              : undefined;
 
-      const timeGranularity = args.time_granularity;
-      const timeRange =
-        args.start !== undefined && args.end !== undefined
-          ? { start: new Date(args.start).getTime(), end: new Date(args.end).getTime() }
-          : undefined;
+          const shares =
+            args.shares !== undefined
+              ? args.shares
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0)
+              : undefined;
 
-      const shares =
-        args.shares !== undefined
-          ? args.shares
-              .split(",")
-              .map((s) => s.trim())
-              .filter((s) => s.length > 0)
-          : undefined;
+          const response = await getOrgStats(client, {
+            organizationUrn,
+            timeGranularity,
+            timeRange,
+            shares,
+          });
 
-      const response = await getOrgStats(client, {
-        organizationUrn,
-        timeGranularity,
-        timeRange,
-        shares,
-      });
-
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
-      };
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+          };
+        },
+      );
     },
   );
 }

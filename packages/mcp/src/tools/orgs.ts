@@ -4,13 +4,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  resolveConfig,
-  LinkedInClient,
-  listOrganizations,
-  getOrganization,
-  getOrganizationFollowerCount,
-} from "@linkedctl/core";
+import { listOrganizations, getOrganization, getOrganizationFollowerCount } from "@linkedctl/core";
+
+import { withClient } from "./with-client.js";
 
 export function registerOrgTools(server: McpServer): void {
   server.registerTool(
@@ -25,22 +21,22 @@ export function registerOrgTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const response = await listOrganizations(client, {
+            count: args.count,
+            start: args.start,
+          });
 
-      const response = await listOrganizations(client, {
-        count: args.count,
-        start: args.start,
-      });
-
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
-      };
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+          };
+        },
+      );
     },
   );
 
@@ -55,19 +51,19 @@ export function registerOrgTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const org = await getOrganization(client, args.id);
 
-      const org = await getOrganization(client, args.id);
-
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(org, null, 2) }],
-      };
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(org, null, 2) }],
+          };
+        },
+      );
     },
   );
 
@@ -82,25 +78,25 @@ export function registerOrgTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const organizationUrn = `urn:li:organization:${args.id}`;
+          const followerCount = await getOrganizationFollowerCount(client, organizationUrn);
 
-      const organizationUrn = `urn:li:organization:${args.id}`;
-      const followerCount = await getOrganizationFollowerCount(client, organizationUrn);
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ organization: organizationUrn, followerCount }, null, 2),
-          },
-        ],
-      };
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({ organization: organizationUrn, followerCount }, null, 2),
+              },
+            ],
+          };
+        },
+      );
     },
   );
 }

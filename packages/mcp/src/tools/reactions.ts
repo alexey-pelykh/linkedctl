@@ -4,17 +4,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  resolveConfig,
-  LinkedInClient,
-  LinkedInAuthError,
-  getCurrentPersonUrn,
-  createReaction,
-  listReactions,
-  deleteReaction,
-  REACTION_TYPES,
-} from "@linkedctl/core";
+import { getCurrentPersonUrn, createReaction, listReactions, deleteReaction, REACTION_TYPES } from "@linkedctl/core";
 import type { ReactionType } from "@linkedctl/core";
+
+import { withClient } from "./with-client.js";
 
 export function registerReactionTools(server: McpServer): void {
   server.registerTool(
@@ -34,39 +27,24 @@ export function registerReactionTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const actor = args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : undefined;
+          const reactionUrn = await createReaction(client, {
+            entity: args.entity_urn,
+            reactionType: (args.reaction_type as ReactionType | undefined) ?? "LIKE",
+            actor,
+          });
 
-      try {
-        const actor = args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : undefined;
-        const reactionUrn = await createReaction(client, {
-          entity: args.entity_urn,
-          reactionType: (args.reaction_type as ReactionType | undefined) ?? "LIKE",
-          actor,
-        });
-
-        return {
-          content: [{ type: "text" as const, text: `Reaction created: ${reactionUrn}` }],
-        };
-      } catch (error: unknown) {
-        if (error instanceof LinkedInAuthError) {
           return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
-              },
-            ],
-            isError: true,
+            content: [{ type: "text" as const, text: `Reaction created: ${reactionUrn}` }],
           };
-        }
-        throw error;
-      }
+        },
+      );
     },
   );
 
@@ -81,41 +59,28 @@ export function registerReactionTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const reactions = await listReactions(client, { entity: args.entity_urn });
 
-      try {
-        const reactions = await listReactions(client, { entity: args.entity_urn });
+          if (reactions.length === 0) {
+            return {
+              content: [{ type: "text" as const, text: "No reactions found" }],
+            };
+          }
 
-        if (reactions.length === 0) {
+          const lines = reactions.map(
+            (r) => `${r.reactionType} by ${r.actor} at ${new Date(r.createdAt).toISOString()}`,
+          );
           return {
-            content: [{ type: "text" as const, text: "No reactions found" }],
+            content: [{ type: "text" as const, text: lines.join("\n") }],
           };
-        }
-
-        const lines = reactions.map((r) => `${r.reactionType} by ${r.actor} at ${new Date(r.createdAt).toISOString()}`);
-        return {
-          content: [{ type: "text" as const, text: lines.join("\n") }],
-        };
-      } catch (error: unknown) {
-        if (error instanceof LinkedInAuthError) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
-              },
-            ],
-            isError: true,
-          };
-        }
-        throw error;
-      }
+        },
+      );
     },
   );
 
@@ -131,37 +96,22 @@ export function registerReactionTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const actorUrn =
+            args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : await getCurrentPersonUrn(client);
 
-      const actorUrn =
-        args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : await getCurrentPersonUrn(client);
+          await deleteReaction(client, { entity: args.entity_urn, actor: actorUrn });
 
-      try {
-        await deleteReaction(client, { entity: args.entity_urn, actor: actorUrn });
-
-        return {
-          content: [{ type: "text" as const, text: "Reaction deleted" }],
-        };
-      } catch (error: unknown) {
-        if (error instanceof LinkedInAuthError) {
           return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
-              },
-            ],
-            isError: true,
+            content: [{ type: "text" as const, text: "Reaction deleted" }],
           };
-        }
-        throw error;
-      }
+        },
+      );
     },
   );
 }
