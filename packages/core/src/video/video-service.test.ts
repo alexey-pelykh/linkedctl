@@ -9,6 +9,7 @@ import type { InitializeVideoUploadResponse } from "./types.js";
 function mockClient(overrides?: Partial<LinkedInClient>): LinkedInClient {
   return {
     request: vi.fn(),
+    requestVoid: vi.fn().mockResolvedValue(undefined),
     uploadBinary: vi.fn(),
     ...overrides,
   } as unknown as LinkedInClient;
@@ -75,8 +76,8 @@ describe("uploadVideoChunk", () => {
 });
 
 describe("finalizeVideoUpload", () => {
-  it("calls client.request with correct path and body", async () => {
-    const client = mockClient({ request: vi.fn().mockResolvedValue(undefined) });
+  it("calls client.requestVoid with correct path and body", async () => {
+    const client = mockClient({ requestVoid: vi.fn().mockResolvedValue(undefined) });
 
     await finalizeVideoUpload(client, {
       video: "urn:li:video:C5F10AQGyzL",
@@ -84,7 +85,7 @@ describe("finalizeVideoUpload", () => {
       uploadedPartIds: ['"etag-0"', '"etag-1"'],
     });
 
-    expect(client.request).toHaveBeenCalledWith("/rest/videos?action=finalizeUpload", {
+    expect(client.requestVoid).toHaveBeenCalledWith("/rest/videos?action=finalizeUpload", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -100,17 +101,15 @@ describe("finalizeVideoUpload", () => {
 
 describe("uploadVideo", () => {
   it("orchestrates initialize, chunk uploads, and finalize", async () => {
-    const requestMock = vi
-      .fn()
-      .mockResolvedValueOnce(INIT_RESPONSE) // initializeUpload
-      .mockResolvedValueOnce(undefined); // finalizeUpload
+    const requestMock = vi.fn().mockResolvedValueOnce(INIT_RESPONSE);
+    const requestVoidMock = vi.fn().mockResolvedValueOnce(undefined);
 
     const uploadBinaryMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 200, headers: { ETag: '"etag-0"' } }))
       .mockResolvedValueOnce(new Response(null, { status: 200, headers: { ETag: '"etag-1"' } }));
 
-    const client = mockClient({ request: requestMock, uploadBinary: uploadBinaryMock });
+    const client = mockClient({ request: requestMock, requestVoid: requestVoidMock, uploadBinary: uploadBinaryMock });
 
     const data = Buffer.alloc(5_000_001);
     const videoUrn = await uploadVideo(client, {
@@ -134,7 +133,7 @@ describe("uploadVideo", () => {
     expect(secondChunk.byteLength).toBe(805_697);
 
     // Verify finalize was called with collected ETags
-    expect(requestMock).toHaveBeenCalledWith(
+    expect(requestVoidMock).toHaveBeenCalledWith(
       "/rest/videos?action=finalizeUpload",
       expect.objectContaining({
         method: "POST",
@@ -159,13 +158,14 @@ describe("uploadVideo", () => {
       },
     };
 
-    const requestMock = vi.fn().mockResolvedValueOnce(singleChunkResponse).mockResolvedValueOnce(undefined);
+    const requestMock = vi.fn().mockResolvedValueOnce(singleChunkResponse);
+    const requestVoidMock = vi.fn().mockResolvedValueOnce(undefined);
 
     const uploadBinaryMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 200, headers: { ETag: '"etag-only"' } }));
 
-    const client = mockClient({ request: requestMock, uploadBinary: uploadBinaryMock });
+    const client = mockClient({ request: requestMock, requestVoid: requestVoidMock, uploadBinary: uploadBinaryMock });
 
     const data = Buffer.alloc(1000);
     const videoUrn = await uploadVideo(client, {

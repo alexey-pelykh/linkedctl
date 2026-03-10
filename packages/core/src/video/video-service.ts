@@ -48,7 +48,7 @@ export async function uploadVideoChunk(client: LinkedInClient, uploadUrl: string
  * Finalize a video upload after all chunks have been uploaded.
  */
 export async function finalizeVideoUpload(client: LinkedInClient, options: FinalizeVideoUploadRequest): Promise<void> {
-  await client.request<undefined>("/rest/videos?action=finalizeUpload", {
+  await client.requestVoid("/rest/videos?action=finalizeUpload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

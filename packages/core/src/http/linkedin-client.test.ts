@@ -144,13 +144,38 @@ describe("LinkedInClient", () => {
       expect(result).toEqual(data);
     });
 
-    it("returns undefined for 204 No Content", async () => {
+    it("rejects on 204 No Content", async () => {
       fetchSpy.mockResolvedValueOnce(emptyResponse(204));
 
       const client = new LinkedInClient(CLIENT_OPTIONS);
-      const result = await client.request("/v2/resource");
 
-      expect(result).toBeUndefined();
+      await expect(client.request("/v2/resource")).rejects.toThrow();
+    });
+  });
+
+  describe("requestVoid", () => {
+    it("resolves on 204 No Content", async () => {
+      fetchSpy.mockResolvedValueOnce(emptyResponse(204));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.requestVoid("/v2/resource")).resolves.toBeUndefined();
+    });
+
+    it("resolves on 200 OK (discards body)", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ ignored: true }));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.requestVoid("/v2/resource")).resolves.toBeUndefined();
+    });
+
+    it("throws on error status", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({}, 401));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.requestVoid("/v2/resource")).rejects.toThrow(LinkedInAuthError);
     });
   });
 

@@ -92,7 +92,7 @@ export async function getComment(client: LinkedInClient, options: GetCommentOpti
  */
 export async function deleteComment(client: LinkedInClient, options: DeleteCommentOptions): Promise<void> {
   const encodedUrn = encodeURIComponent(options.commentUrn);
-  await client.request<undefined>(`/rest/comments/${encodedUrn}`, { method: "DELETE" });
+  await client.requestVoid(`/rest/comments/${encodedUrn}`, { method: "DELETE" });
 }
 
 function mapComment(raw: CommentApiResponse): Comment {

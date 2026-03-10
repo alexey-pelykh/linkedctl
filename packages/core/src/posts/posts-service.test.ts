@@ -10,6 +10,7 @@ function mockClient(urn: string): LinkedInClient {
   return {
     create: vi.fn().mockResolvedValue(urn),
     request: vi.fn(),
+    requestVoid: vi.fn().mockResolvedValue(undefined),
   } as unknown as LinkedInClient;
 }
 
@@ -366,11 +367,10 @@ describe("listPosts", () => {
 describe("updatePost", () => {
   it("sends PARTIAL_UPDATE with commentary patch", async () => {
     const client = mockClient("");
-    vi.mocked(client.request).mockResolvedValue(undefined);
 
     await updatePost(client, "urn:li:share:123", { text: "Updated text" });
 
-    expect(client.request).toHaveBeenCalledWith("/rest/posts/urn%3Ali%3Ashare%3A123", {
+    expect(client.requestVoid).toHaveBeenCalledWith("/rest/posts/urn%3Ali%3Ashare%3A123", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -390,11 +390,10 @@ describe("updatePost", () => {
 describe("deletePost", () => {
   it("sends DELETE request with URL-encoded URN", async () => {
     const client = mockClient("");
-    vi.mocked(client.request).mockResolvedValue(undefined);
 
     await deletePost(client, "urn:li:share:123");
 
-    expect(client.request).toHaveBeenCalledWith("/rest/posts/urn%3Ali%3Ashare%3A123", {
+    expect(client.requestVoid).toHaveBeenCalledWith("/rest/posts/urn%3Ali%3Ashare%3A123", {
       method: "DELETE",
     });
   });

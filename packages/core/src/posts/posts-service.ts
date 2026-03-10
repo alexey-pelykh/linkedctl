@@ -115,7 +115,7 @@ export async function listPosts(client: LinkedInClient, options: ListPostsOption
  * Update the commentary text of an existing LinkedIn post.
  */
 export async function updatePost(client: LinkedInClient, postUrn: string, options: UpdatePostOptions): Promise<void> {
-  await client.request<undefined>(`/rest/posts/${encodeUrn(postUrn)}`, {
+  await client.requestVoid(`/rest/posts/${encodeUrn(postUrn)}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -135,7 +135,7 @@ export async function updatePost(client: LinkedInClient, postUrn: string, option
  * Delete a LinkedIn post by URN.
  */
 export async function deletePost(client: LinkedInClient, postUrn: string): Promise<void> {
-  await client.request<undefined>(`/rest/posts/${encodeUrn(postUrn)}`, {
+  await client.requestVoid(`/rest/posts/${encodeUrn(postUrn)}`, {
     method: "DELETE",
   });
 }
