@@ -1,13 +1,19 @@
 ![LinkedCtl: The Complete CLI & MCP for LinkedIn](https://raw.githubusercontent.com/linkedctl/.github/main/profile/assets/social-preview.png)
 
 [![CI](https://img.shields.io/github/check-runs/alexey-pelykh/linkedctl/main)](https://github.com/alexey-pelykh/linkedctl/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/alexey-pelykh/linkedctl/actions/workflows/codeql.yml/badge.svg)](https://github.com/alexey-pelykh/linkedctl/actions/workflows/codeql.yml)
 [![License](https://img.shields.io/github/license/alexey-pelykh/linkedctl)](https://www.gnu.org/licenses/agpl-3.0.txt)
 
 OAuth2 CLI and MCP server for the [LinkedIn](https://www.linkedin.com) API.
 
 ## What It Does
 
-- **Post content** to LinkedIn via the official API
+- **Post content** — text, images, video, documents, articles, multi-image carousels, and polls
+- **Comments & reactions** — create, list, and delete comments and reactions on posts
+- **Organization support** — post, comment, react, and view analytics as an organization
+- **Analytics** — per-post, per-member, and per-organization statistics
+- **Media uploads** — upload images, video, and documents to LinkedIn
+- **Draft posts** — save posts as drafts before publishing
 - **OAuth 2.0 authentication** with your own LinkedIn app
 - **Direct token passing** for tokens obtained from other applications
 - **MCP server** for AI assistant integration (Claude, Cursor, etc.)
@@ -114,31 +120,81 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 
 ### Available Tools
 
-#### `post_create`
+All tools accept an optional `profile` parameter to select a configuration profile.
 
-Create a text post on LinkedIn.
+#### Authentication
 
-| Parameter    | Type     | Required | Description                                        |
-| ------------ | -------- | -------- | -------------------------------------------------- |
-| `text`       | `string` | Yes      | The text content of the post                       |
-| `visibility` | `string` | No       | `"PUBLIC"` or `"CONNECTIONS"` (default `"PUBLIC"`) |
-| `profile`    | `string` | No       | Profile name to use from config file               |
+| Tool          | Description                                                     |
+| ------------- | --------------------------------------------------------------- |
+| `whoami`      | Show the current user's name, email, and profile picture URL    |
+| `auth_status` | Show authentication status for a profile                        |
+| `auth_revoke` | Revoke the access token server-side and clear local credentials |
 
-#### `auth_status`
+#### Posts
 
-Show authentication status for a profile.
+| Tool          | Description                                                                |
+| ------------- | -------------------------------------------------------------------------- |
+| `post_create` | Create a post on LinkedIn with optional media, poll, or article attachment |
+| `post_get`    | Fetch a single post by URN                                                 |
+| `post_list`   | List posts with pagination (supports `as_org` for organization posts)      |
+| `post_update` | Update the commentary text of an existing post                             |
+| `post_delete` | Delete a post by URN                                                       |
 
-| Parameter | Type     | Required | Description                                           |
-| --------- | -------- | -------- | ----------------------------------------------------- |
-| `profile` | `string` | No       | Profile name to check (uses default if not specified) |
+`post_create` supports rich content types:
 
-#### `auth_revoke`
+| Parameter                    | Description                                           |
+| ---------------------------- | ----------------------------------------------------- |
+| `text`                       | Post text content (required)                          |
+| `visibility`                 | `PUBLIC` or `CONNECTIONS` (default `PUBLIC`)          |
+| `draft`                      | Save as draft instead of publishing                   |
+| `image` / `image_file`       | Attach a single image (URN or local file path)        |
+| `video` / `video_file`       | Attach a video (URN or local file path)               |
+| `document` / `document_file` | Attach a document (URN or local file path)            |
+| `images` / `image_files`     | Attach multiple images (minimum 2)                    |
+| `article_url`                | Attach an article link                                |
+| `poll`                       | Poll question text                                    |
+| `poll_options`               | Poll answer options (2–4 required when `poll` is set) |
+| `poll_duration`              | `ONE_DAY`, `THREE_DAYS`, `ONE_WEEK`, or `TWO_WEEKS`   |
+| `as_org`                     | Post as an organization (numeric ID)                  |
 
-Revoke the access token server-side and clear local credentials for a profile.
+#### Comments
 
-| Parameter | Type     | Required | Description                                            |
-| --------- | -------- | -------- | ------------------------------------------------------ |
-| `profile` | `string` | No       | Profile name to revoke (uses default if not specified) |
+| Tool             | Description                                    |
+| ---------------- | ---------------------------------------------- |
+| `comment_create` | Create a comment on a post (supports `as_org`) |
+| `comment_list`   | List comments on a post                        |
+| `comment_get`    | Get a specific comment by URN                  |
+| `comment_delete` | Delete a comment by URN                        |
+
+#### Reactions
+
+| Tool              | Description                                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `reaction_create` | Add a reaction to a post (supports `as_org`). Types: `LIKE`, `PRAISE`, `EMPATHY`, `INTEREST`, `APPRECIATION`, `ENTERTAINMENT` |
+| `reaction_list`   | List reactions on a post                                                                                                      |
+| `reaction_delete` | Remove a reaction from a post (supports `as_org`)                                                                             |
+
+#### Organizations
+
+| Tool            | Description                                           |
+| --------------- | ----------------------------------------------------- |
+| `org_list`      | List organizations the authenticated user administers |
+| `org_get`       | Fetch a single organization by ID                     |
+| `org_followers` | Get the follower count for an organization            |
+
+#### Analytics
+
+| Tool         | Description                                                                         |
+| ------------ | ----------------------------------------------------------------------------------- |
+| `stats_post` | Get analytics for a single post (impressions, reach, reactions, comments, reshares) |
+| `stats_me`   | Get aggregated analytics across all your posts                                      |
+| `stats_org`  | Get share statistics for an organization (lifetime or time-bucketed)                |
+
+#### Media
+
+| Tool              | Description                                                           |
+| ----------------- | --------------------------------------------------------------------- |
+| `document_upload` | Upload a document to LinkedIn (PDF, DOCX, PPTX, DOC, PPT; max 100 MB) |
 
 ## Configuration
 
@@ -259,11 +315,15 @@ Configuration values are resolved in this order (highest priority first):
 | Option             | Description                          |
 | ------------------ | ------------------------------------ |
 | `--profile <name>` | Use a specific configuration profile |
+| `--json`           | Force JSON output                    |
+| `-q, --quiet`      | Suppress informational output        |
+| `--no-color`       | Disable color output                 |
 
-### `auth` -- Manage Authentication
+### `auth` — Manage Authentication
 
 | Command        | Description                                                |
 | -------------- | ---------------------------------------------------------- |
+| `auth setup`   | Configure OAuth client credentials interactively           |
 | `auth login`   | Authenticate via OAuth 2.0 (opens browser)                 |
 | `auth token`   | Store a direct access token                                |
 | `auth status`  | Show authentication status and token expiry                |
@@ -285,7 +345,7 @@ Configuration values are resolved in this order (highest priority first):
 | ------------------------ | -------------------------------- |
 | `--access-token <token>` | Access token to store (required) |
 
-### `post` -- Manage LinkedIn Posts
+### `post` — Manage LinkedIn Posts
 
 ```sh
 # Shorthand: pass text as an argument
@@ -298,26 +358,117 @@ linkedctl post create --text "Hello from LinkedCtl!"
 echo "Hello from LinkedCtl!" | linkedctl post create
 ```
 
+| Command             | Description                       |
+| ------------------- | --------------------------------- |
+| `post create`       | Create a post on LinkedIn         |
+| `post get <urn>`    | Fetch a post by URN               |
+| `post list`         | List posts with pagination        |
+| `post update <urn>` | Update a post's commentary text   |
+| `post delete <urn>` | Delete a post (with confirmation) |
+
 **`post create` options:**
 
-| Option                      | Description                     | Default  |
-| --------------------------- | ------------------------------- | -------- |
-| `--text <text>`             | Text content of the post        |          |
-| `--visibility <visibility>` | `PUBLIC` or `CONNECTIONS`       | `PUBLIC` |
-| `--format <format>`         | Output format (`json`, `table`) | auto     |
+| Option                       | Description                                                     | Default      |
+| ---------------------------- | --------------------------------------------------------------- | ------------ |
+| `--text <text>`              | Text content (also accepts `--text-file`, positional, or stdin) |              |
+| `--visibility <visibility>`  | `PUBLIC` or `CONNECTIONS`                                       | `PUBLIC`     |
+| `--draft`                    | Save as draft instead of publishing                             |              |
+| `--image <urn>`              | Image URN to attach                                             |              |
+| `--image-file <path>`        | Local image file to upload and attach                           |              |
+| `--video <urn>`              | Video URN to attach                                             |              |
+| `--video-file <path>`        | Local video file to upload and attach                           |              |
+| `--document <urn>`           | Document URN to attach                                          |              |
+| `--document-file <path>`     | Local document file to upload and attach                        |              |
+| `--images <urns>`            | Multiple image URNs (comma-separated, minimum 2)                |              |
+| `--image-files <paths>`      | Multiple local image files (comma-separated, minimum 2)         |              |
+| `--article-url <url>`        | Article URL to attach                                           |              |
+| `--poll <question>`          | Poll question text                                              |              |
+| `--option <text>`            | Poll option (repeat 2–4 times)                                  |              |
+| `--poll-duration <duration>` | `ONE_DAY`, `THREE_DAYS`, `ONE_WEEK`, or `TWO_WEEKS`             | `THREE_DAYS` |
+| `--as-org <id>`              | Post as an organization (numeric ID)                            |              |
+| `--format <format>`          | Output format (`json`, `table`)                                 | auto         |
 
-When no `--text` is provided, text is read from stdin if available.
+**`post list` options:**
 
-The `--format` option defaults to `table` in a terminal and `json` when piped.
+| Option          | Description                                | Default |
+| --------------- | ------------------------------------------ | ------- |
+| `--count <n>`   | Number of posts to return (max 100)        | `10`    |
+| `--start <n>`   | Starting index for pagination              | `0`     |
+| `--as-org <id>` | List posts of an organization (numeric ID) |         |
 
-### `profile` -- Manage Configuration Profiles
+### `comment` — Manage Comments
 
-| Command                 | Description                     |
-| ----------------------- | ------------------------------- |
-| `profile create <name>` | Create a new profile            |
-| `profile list`          | List all profiles               |
-| `profile show <name>`   | Show profile details (redacted) |
-| `profile delete <name>` | Delete a profile                |
+| Command                        | Description                          |
+| ------------------------------ | ------------------------------------ |
+| `comment create <post-urn>`    | Create a comment on a post           |
+| `comment list <post-urn>`      | List comments on a post              |
+| `comment get <comment-urn>`    | Get a specific comment by URN        |
+| `comment delete <comment-urn>` | Delete a comment (with confirmation) |
+
+**`comment create` options:**
+
+| Option          | Description                             |
+| --------------- | --------------------------------------- |
+| `--text <text>` | Comment text (required)                 |
+| `--as-org <id>` | Comment as an organization (numeric ID) |
+
+### `reaction` — Manage Reactions
+
+| Command                 | Description                   |
+| ----------------------- | ----------------------------- |
+| `reaction create <urn>` | Add a reaction to a post      |
+| `reaction list <urn>`   | List reactions on a post      |
+| `reaction delete <urn>` | Remove a reaction from a post |
+
+**`reaction create` options:**
+
+| Option          | Description                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| `--type <type>` | `LIKE`, `PRAISE`, `EMPATHY`, `INTEREST`, `APPRECIATION`, or `ENTERTAINMENT` (default `LIKE`) |
+| `--as-org <id>` | React as an organization (numeric ID)                                                        |
+
+### `org` — Manage Organizations
+
+| Command              | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `org list`           | List organizations the authenticated user administers |
+| `org get <id>`       | Get organization details                              |
+| `org followers <id>` | Get organization follower count                       |
+
+### `media` — Upload Media
+
+| Command                        | Description                                               |
+| ------------------------------ | --------------------------------------------------------- |
+| `media upload-image <file>`    | Upload an image (JPG, PNG, GIF)                           |
+| `media upload-video <file>`    | Upload a video                                            |
+| `media upload-document <file>` | Upload a document (PDF, DOCX, PPTX, DOC, PPT; max 100 MB) |
+
+All media commands accept `--as-org <id>` and `--format json|table`.
+
+### `stats` — View Analytics
+
+| Command            | Description                                         |
+| ------------------ | --------------------------------------------------- |
+| `stats post <urn>` | Get post analytics (impressions, reach, engagement) |
+| `stats me`         | Get aggregated analytics across all your posts      |
+| `stats org <id>`   | Get organization share statistics                   |
+
+**Common options:**
+
+| Option                             | Description                       |
+| ---------------------------------- | --------------------------------- |
+| `--from <date>` / `--start <date>` | Start of date range (YYYY-MM-DD)  |
+| `--to <date>` / `--end <date>`     | End of date range (YYYY-MM-DD)    |
+| `--time-granularity <granularity>` | `DAY` or `MONTH` (org stats only) |
+
+### `profile` — Manage Configuration Profiles
+
+| Command                 | Description                          |
+| ----------------------- | ------------------------------------ |
+| `profile create <name>` | Create a new profile                 |
+| `profile list`          | List all profiles                    |
+| `profile show [<name>]` | Show profile details (redacted)      |
+| `profile delete <name>` | Delete a profile (with confirmation) |
 
 **`profile create` options:**
 
@@ -326,7 +477,7 @@ The `--format` option defaults to `table` in a terminal and `json` when piped.
 | `--access-token <token>`  | OAuth 2.0 access token (required)              |
 | `--api-version <version>` | LinkedIn API version, e.g. `202601` (required) |
 
-### `whoami` -- Show Current User
+### `whoami` — Show Current User
 
 ```sh
 linkedctl whoami
@@ -336,6 +487,21 @@ linkedctl whoami --format json
 | Option              | Description                     | Default |
 | ------------------- | ------------------------------- | ------- |
 | `--format <format>` | Output format (`json`, `table`) | auto    |
+
+### `completion` — Shell Completions
+
+```sh
+linkedctl completion bash
+linkedctl completion zsh
+```
+
+## Security
+
+- **Dependabot** keeps dependencies up to date with automated pull requests
+- **CodeQL** analysis runs on every push and pull request for automated vulnerability detection
+- **Path traversal validation** on profile names prevents directory escape attacks
+- **Unified auth error handling** across all MCP tools provides consistent authentication failure messages
+- **Destructive operations** (delete post, delete comment, delete profile) require interactive confirmation unless `--force` is passed
 
 ## Disclaimer
 
