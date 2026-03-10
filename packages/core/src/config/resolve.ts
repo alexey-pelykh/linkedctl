@@ -5,6 +5,8 @@ import type { ConfigResult, ResolveOptions } from "./types.js";
 import { loadConfigFile } from "./loader.js";
 import { validateConfig } from "./validate.js";
 import { applyEnvOverlay } from "./env.js";
+import { findProfilesWithScopes } from "./profiles.js";
+import { PRODUCT_PRESETS } from "./products.js";
 
 /**
  * Error thrown when configuration is invalid or incomplete.
@@ -76,9 +78,11 @@ export async function resolveConfig(options?: ResolveOptions): Promise<ConfigRes
     const grantedScopes = configuredScope.split(" ");
     const missingScopes = requiredScopes.filter((s) => !grantedScopes.includes(s));
     if (missingScopes.length > 0) {
-      throw new ConfigError(
-        `Missing required OAuth scopes: ${missingScopes.join(", ")}. Re-run "linkedctl auth setup" to configure the required scopes, then "linkedctl auth login" to re-authenticate.`,
-      );
+      const message = await buildScopeMismatchMessage(missingScopes, requiredScopes, {
+        profile: options?.profile,
+        home: options?.home,
+      });
+      throw new ConfigError(message);
     }
   }
 
@@ -90,4 +94,78 @@ function describeSearchLocations(options?: ResolveOptions): string {
     return `~/.linkedctl/${options.profile}.yaml`;
   }
   return ".linkedctl.yaml (CWD), ~/.linkedctl.yaml (home)";
+}
+
+/**
+ * Build a helpful scope-mismatch error message.
+ *
+ * When other profiles already have the required scopes, suggests `--profile`.
+ * Otherwise, suggests the exact `auth setup` command to create a new profile.
+ * Also explains LinkedIn's product exclusivity constraint when relevant.
+ */
+async function buildScopeMismatchMessage(
+  missingScopes: string[],
+  requiredScopes: string[],
+  options?: { profile?: string | undefined; home?: string | undefined },
+): Promise<string> {
+  const parts: string[] = [`Missing required OAuth scopes: ${missingScopes.join(", ")}.`];
+
+  // Check if any existing profile already has the required scopes
+  let matchingProfiles: string[] = [];
+  try {
+    matchingProfiles = await findProfilesWithScopes(requiredScopes, {
+      home: options?.home,
+      excludeProfile: options?.profile,
+    });
+  } catch {
+    // If profile scanning fails, fall through to generic advice.
+  }
+
+  if (matchingProfiles.length > 0) {
+    const profileList = matchingProfiles.map((p) => `--profile ${p}`).join(", ");
+    parts.push(`Other profiles already have the required scopes: ${profileList}.`);
+  } else {
+    // Suggest the right auth setup command based on missing scopes
+    const setupHint = suggestSetupCommand(missingScopes, options?.profile);
+    parts.push(setupHint);
+  }
+
+  // Explain product exclusivity when scopes span multiple exclusive products
+  if (involvesExclusiveProducts(requiredScopes)) {
+    parts.push(
+      "Note: LinkedIn enforces product exclusivity — the Community Management API " +
+        "must be the sole product on a Developer App. Use separate profiles for " +
+        "separate apps (e.g. --profile analytics).",
+    );
+  }
+
+  return parts.join(" ");
+}
+
+/**
+ * Suggest the appropriate `auth setup` command for the missing scopes.
+ */
+function suggestSetupCommand(missingScopes: string[], currentProfile: string | undefined): string {
+  // Find a product preset that covers all missing scopes
+  for (const [productId, preset] of Object.entries(PRODUCT_PRESETS)) {
+    if (missingScopes.every((s) => preset.scopes.includes(s))) {
+      const profileArg = currentProfile !== undefined ? ` --profile ${currentProfile}` : "";
+      return `Run: linkedctl auth setup --product ${productId}${profileArg}`;
+    }
+  }
+
+  // Generic fallback
+  const profileArg = currentProfile !== undefined ? ` --profile ${currentProfile}` : "";
+  return `Re-run "linkedctl auth setup${profileArg}" to configure the required scopes, then "linkedctl auth login" to re-authenticate.`;
+}
+
+/**
+ * Check whether the required scopes span multiple exclusive LinkedIn products.
+ * The Community Management API (`r_member_postAnalytics`) is exclusive and
+ * cannot coexist with Share (`w_member_social`) on the same Developer App.
+ */
+function involvesExclusiveProducts(scopes: string[]): boolean {
+  const hasCommunityManagement = scopes.includes("r_member_postAnalytics");
+  const hasShare = scopes.includes("w_member_social");
+  return hasCommunityManagement && hasShare;
 }

@@ -16,3 +16,7 @@ export {
   clearOAuthTokens,
 } from "./writer.js";
 export { resolveConfig, ConfigError } from "./resolve.js";
+export { PRODUCT_PRESETS, PRODUCT_NAMES, resolveProductScopes } from "./products.js";
+export type { ProductPreset } from "./products.js";
+export { listProfileScopes, findProfilesWithScopes } from "./profiles.js";
+export type { ProfileScopeSummary } from "./profiles.js";

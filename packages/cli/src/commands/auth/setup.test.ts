@@ -53,6 +53,10 @@ function mockReadline(answers: string[]) {
   return { closeFn };
 }
 
+// Interactive question order:
+//   [0] logo? [1] client-id [2] client-secret
+//   [3] sign-in? [4] share? [5] community-management? [6] pkce?
+
 describe("auth setup", () => {
   let saveOAuthClientCredentialsSpy: ReturnType<typeof vi.spyOn>;
   let saveOAuthScopeSpy: ReturnType<typeof vi.spyOn>;
@@ -74,8 +78,9 @@ describe("auth setup", () => {
     vi.restoreAllMocks();
   });
 
-  it("saves credentials and scope with both products enabled", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "y", "n"]);
+  it("saves credentials and scope with Sign In and Share enabled", () => {
+    // logo=n, id, secret, signIn=y, share=y, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -88,7 +93,8 @@ describe("auth setup", () => {
   });
 
   it("trims whitespace from input", () => {
-    mockReadline(["n", "  my-client-id  ", "  my-client-secret  ", "y", "n", "n"]);
+    // logo=n, id (padded), secret (padded), signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "  my-client-id  ", "  my-client-secret  ", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -116,7 +122,8 @@ describe("auth setup", () => {
   });
 
   it("throws when no products are selected", async () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "n", "n"]);
+    // logo=n, id, secret, signIn=n, share=n, community=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     await expect(program.parseAsync(["auth", "setup"], { from: "user" })).rejects.toThrow(
@@ -125,7 +132,8 @@ describe("auth setup", () => {
   });
 
   it("saves scope for Sign In only", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -134,7 +142,8 @@ describe("auth setup", () => {
   });
 
   it("saves scope for Share only (auto-includes openid scopes)", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "n", "y", "n"]);
+    // logo=n, id, secret, signIn=n, share=y, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "n", "y", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -142,8 +151,30 @@ describe("auth setup", () => {
     });
   });
 
+  it("saves scope for Community Management only", () => {
+    // logo=n, id, secret, signIn=n, share=n, community=y, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "n", "n", "y", "n"]);
+
+    const program = wrapInProgram(setupCommand());
+    return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
+      expect(saveOAuthScopeSpy).toHaveBeenCalledWith("r_member_postAnalytics", undefined);
+    });
+  });
+
+  it("warns when Community Management and Share are both selected", () => {
+    // logo=n, id, secret, signIn=n, share=y, community=y, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "n", "y", "y", "n"]);
+
+    const program = wrapInProgram(setupCommand());
+    return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
+      const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+      expect(output).toContain("must be the sole product");
+    });
+  });
+
   it("respects --profile flag", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["--profile", "work", "auth", "setup"], { from: "user" }).then(() => {
@@ -156,7 +187,8 @@ describe("auth setup", () => {
   });
 
   it("prints setup instructions to stderr", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -169,7 +201,8 @@ describe("auth setup", () => {
   });
 
   it("prints profile label in success message", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["--profile", "personal", "auth", "setup"], { from: "user" }).then(() => {
@@ -179,7 +212,8 @@ describe("auth setup", () => {
   });
 
   it("copies logo to ~/Downloads when user accepts", () => {
-    mockReadline(["y", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=y, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["y", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -193,7 +227,8 @@ describe("auth setup", () => {
   });
 
   it("does not copy logo when user declines", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -206,7 +241,8 @@ describe("auth setup", () => {
   });
 
   it("saves pkce setting when enabled", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "y"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=y
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "y"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -218,7 +254,8 @@ describe("auth setup", () => {
   });
 
   it("saves pkce setting when disabled", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -229,7 +266,8 @@ describe("auth setup", () => {
   });
 
   it("saves default api-version", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -238,7 +276,8 @@ describe("auth setup", () => {
   });
 
   it("saves api-version with profile flag", () => {
-    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=n, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["n", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["--profile", "work", "auth", "setup"], { from: "user" }).then(() => {
@@ -248,7 +287,8 @@ describe("auth setup", () => {
 
   it("shows error when logo copy fails after user accepts", () => {
     copyFileSpy.mockRejectedValue(new Error("ENOENT"));
-    mockReadline(["y", "my-client-id", "my-client-secret", "y", "n", "n"]);
+    // logo=y, id, secret, signIn=y, share=n, community=n, pkce=n
+    mockReadline(["y", "my-client-id", "my-client-secret", "y", "n", "n", "n"]);
 
     const program = wrapInProgram(setupCommand());
     return program.parseAsync(["auth", "setup"], { from: "user" }).then(() => {
@@ -256,6 +296,52 @@ describe("auth setup", () => {
       expect(output).toContain("Could not save logo");
       expect(output).not.toContain("linkedctl-logo.png");
       expect(output).toContain("App logo");
+    });
+  });
+
+  describe("--product flag", () => {
+    it("sets scopes for share product without interactive product questions", () => {
+      // logo=n, id, secret, pkce=n (no product questions)
+      mockReadline(["n", "my-client-id", "my-client-secret", "n"]);
+
+      const program = wrapInProgram(setupCommand());
+      return program.parseAsync(["auth", "setup", "--product", "share"], { from: "user" }).then(() => {
+        expect(saveOAuthScopeSpy).toHaveBeenCalledWith("openid profile w_member_social", undefined);
+      });
+    });
+
+    it("sets scopes for community-management product", () => {
+      // logo=n, id, secret, pkce=n
+      mockReadline(["n", "my-client-id", "my-client-secret", "n"]);
+
+      const program = wrapInProgram(setupCommand());
+      return program.parseAsync(["auth", "setup", "--product", "community-management"], { from: "user" }).then(() => {
+        expect(saveOAuthScopeSpy).toHaveBeenCalledWith("r_member_postAnalytics", undefined);
+      });
+    });
+
+    it("prints selected product and scopes", () => {
+      // logo=n, id, secret, pkce=n
+      mockReadline(["n", "my-client-id", "my-client-secret", "n"]);
+
+      const program = wrapInProgram(setupCommand());
+      return program.parseAsync(["auth", "setup", "--product", "share"], { from: "user" }).then(() => {
+        const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+        expect(output).toContain('"share"');
+        expect(output).toContain("openid profile w_member_social");
+      });
+    });
+
+    it("respects --profile flag with --product", () => {
+      // logo=n, id, secret, pkce=n
+      mockReadline(["n", "my-client-id", "my-client-secret", "n"]);
+
+      const program = wrapInProgram(setupCommand());
+      return program
+        .parseAsync(["--profile", "analytics", "auth", "setup", "--product", "community-management"], { from: "user" })
+        .then(() => {
+          expect(saveOAuthScopeSpy).toHaveBeenCalledWith("r_member_postAnalytics", { profile: "analytics" });
+        });
     });
   });
 });

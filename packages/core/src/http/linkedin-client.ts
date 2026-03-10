@@ -4,6 +4,7 @@
 import {
   LinkedInApiError,
   LinkedInAuthError,
+  LinkedInForbiddenError,
   LinkedInRateLimitError,
   LinkedInServerError,
   LinkedInUpgradeRequiredError,
@@ -171,6 +172,15 @@ export class LinkedInClient {
 
       if (response.status === 426) {
         throw new LinkedInUpgradeRequiredError(this.apiVersion, body);
+      }
+
+      if (response.status === 403) {
+        throw new LinkedInForbiddenError(
+          "LinkedIn API request forbidden (HTTP 403). " +
+            "Verify that your LinkedIn Developer App has the correct product enabled " +
+            "and that the OAuth scopes match the product's requirements.",
+          body,
+        );
       }
 
       if (response.status === 401) {

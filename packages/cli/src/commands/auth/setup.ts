@@ -6,13 +6,15 @@ import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline/promises";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import {
   saveOAuthClientCredentials,
   saveOAuthScope,
   saveOAuthPkce,
   saveApiVersion,
   DEFAULT_API_VERSION,
+  PRODUCT_NAMES,
+  resolveProductScopes,
 } from "@linkedctl/core";
 
 import { DEFAULT_REDIRECT_PORT } from "./login.js";
@@ -21,8 +23,13 @@ export function setupCommand(): Command {
   const cmd = new Command("setup");
   cmd.description("Configure OAuth client credentials interactively");
   cmd.addHelpText("after", "\nLinkedIn Developer Portal: https://www.linkedin.com/developers/apps");
+  cmd.addOption(
+    new Option("--product <product>", "pre-select a LinkedIn product (skips interactive product selection)").choices(
+      PRODUCT_NAMES,
+    ),
+  );
 
-  cmd.action(async () => {
+  cmd.action(async (opts: { product?: string | undefined }) => {
     const program = cmd.parent?.parent;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const profileFlag: string | undefined = program?.opts()["profile"];
@@ -58,7 +65,9 @@ export function setupCommand(): Command {
     process.stderr.write('3. Under the "Auth" tab, note your Client ID and Primary Client Secret\n');
     process.stderr.write(`4. Add a redirect URL: http://127.0.0.1:${DEFAULT_REDIRECT_PORT}/callback\n`);
     process.stderr.write('5. Under "Products", request access to the products you need\n');
-    process.stderr.write("   (e.g. Share on LinkedIn, Sign In with LinkedIn using OpenID Connect)\n");
+    process.stderr.write(
+      "   (e.g. Share on LinkedIn, Sign In with LinkedIn using OpenID Connect, Community Management API)\n",
+    );
     process.stderr.write("6. Copy the Client ID and Client Secret below\n");
     process.stderr.write("\n");
 
@@ -83,40 +92,21 @@ export function setupCommand(): Command {
 
       await saveOAuthClientCredentials({ clientId: clientId.trim(), clientSecret: clientSecret.trim() }, writeOpts);
 
-      process.stderr.write("\n");
-      process.stderr.write("Which LinkedIn products have you enabled for this app?\n");
-      process.stderr.write("\n");
+      let scope: string;
 
-      const scopes: string[] = [];
-
-      const signIn = await rl.question("Sign In with LinkedIn using OpenID Connect? [y/N] ");
-      if (signIn.trim().toLowerCase() === "y" || signIn.trim().toLowerCase() === "yes") {
-        scopes.push("openid", "profile", "email");
-      }
-
-      const share = await rl.question("Share on LinkedIn? [y/N] ");
-      if (share.trim().toLowerCase() === "y" || share.trim().toLowerCase() === "yes") {
-        scopes.push("w_member_social");
-        // Posting requires the author's person URN, which is only available via
-        // the /v2/userinfo endpoint. That endpoint needs openid scopes, so we
-        // force-enable them when Share on LinkedIn is selected.
-        if (!scopes.includes("openid")) {
-          scopes.push("openid", "profile", "email");
-          process.stderr.write(
-            '  → Also enabling "Sign In with LinkedIn" scopes (required to resolve author identity for posts)\n',
-          );
+      if (opts.product !== undefined) {
+        // Non-interactive: resolve scopes from the product preset
+        const productScope = resolveProductScopes(opts.product);
+        if (productScope === undefined) {
+          throw new Error(`Unknown product: ${opts.product}. Valid products: ${PRODUCT_NAMES.join(", ")}`);
         }
+        scope = productScope;
+        process.stderr.write(`\nProduct "${opts.product}" selected — scopes: ${scope}\n`);
+      } else {
+        // Interactive product selection
+        scope = await interactiveProductSelection(rl);
       }
 
-      if (scopes.length === 0) {
-        throw new Error(
-          "At least one LinkedIn product must be enabled for OAuth to work. " +
-            'Enable products under the "Products" tab of your app at https://www.linkedin.com/developers/apps ' +
-            "and then re-run this setup.",
-        );
-      }
-
-      const scope = [...new Set(scopes)].join(" ");
       await saveOAuthScope(scope, writeOpts);
 
       process.stderr.write("\n");
@@ -146,4 +136,64 @@ export function setupCommand(): Command {
   });
 
   return cmd;
+}
+
+/**
+ * Walk the user through interactive product selection.
+ *
+ * Asks about each LinkedIn product and collects the corresponding scopes.
+ * Warns when mutually exclusive products are selected together.
+ */
+async function interactiveProductSelection(rl: { question(query: string): Promise<string> }): Promise<string> {
+  process.stderr.write("\n");
+  process.stderr.write("Which LinkedIn products have you enabled for this app?\n");
+  process.stderr.write("\n");
+
+  const scopes: string[] = [];
+  let hasCommunityManagement = false;
+
+  const signIn = await rl.question("Sign In with LinkedIn using OpenID Connect? [y/N] ");
+  if (signIn.trim().toLowerCase() === "y" || signIn.trim().toLowerCase() === "yes") {
+    scopes.push("openid", "profile", "email");
+  }
+
+  const share = await rl.question("Share on LinkedIn? [y/N] ");
+  if (share.trim().toLowerCase() === "y" || share.trim().toLowerCase() === "yes") {
+    scopes.push("w_member_social");
+    // Posting requires the author's person URN, which is only available via
+    // the /v2/userinfo endpoint. That endpoint needs openid scopes, so we
+    // force-enable them when Share on LinkedIn is selected.
+    if (!scopes.includes("openid")) {
+      scopes.push("openid", "profile", "email");
+      process.stderr.write(
+        '  → Also enabling "Sign In with LinkedIn" scopes (required to resolve author identity for posts)\n',
+      );
+    }
+  }
+
+  const communityManagement = await rl.question("Community Management API? [y/N] ");
+  if (communityManagement.trim().toLowerCase() === "y" || communityManagement.trim().toLowerCase() === "yes") {
+    scopes.push("r_member_postAnalytics");
+    hasCommunityManagement = true;
+  }
+
+  if (scopes.length === 0) {
+    throw new Error(
+      "At least one LinkedIn product must be enabled for OAuth to work. " +
+        'Enable products under the "Products" tab of your app at https://www.linkedin.com/developers/apps ' +
+        "and then re-run this setup.",
+    );
+  }
+
+  // Warn about product exclusivity
+  if (hasCommunityManagement && scopes.includes("w_member_social")) {
+    process.stderr.write("\n");
+    process.stderr.write(
+      "  ⚠ Warning: Community Management API must be the sole product on a LinkedIn Developer App.\n",
+    );
+    process.stderr.write("  Using it alongside Share on LinkedIn requires separate apps and separate profiles.\n");
+    process.stderr.write('  Consider running "linkedctl auth setup --profile analytics" for a dedicated profile.\n');
+  }
+
+  return [...new Set(scopes)].join(" ");
 }

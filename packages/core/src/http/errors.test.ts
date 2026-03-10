@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   LinkedInApiError,
   LinkedInAuthError,
+  LinkedInForbiddenError,
   LinkedInRateLimitError,
   LinkedInServerError,
   LinkedInUpgradeRequiredError,
@@ -47,6 +48,26 @@ describe("LinkedInAuthError", () => {
   it("stores response body", () => {
     const body = { message: "Token expired" };
     const error = new LinkedInAuthError("unauthorized", body);
+    expect(error.responseBody).toEqual(body);
+  });
+});
+
+describe("LinkedInForbiddenError", () => {
+  it("has status 403 and correct name", () => {
+    const error = new LinkedInForbiddenError("forbidden");
+    expect(error.status).toBe(403);
+    expect(error.name).toBe("LinkedInForbiddenError");
+    expect(error.message).toBe("forbidden");
+  });
+
+  it("is an instance of LinkedInApiError", () => {
+    const error = new LinkedInForbiddenError("forbidden");
+    expect(error).toBeInstanceOf(LinkedInApiError);
+  });
+
+  it("stores response body", () => {
+    const body = { message: "Insufficient permissions" };
+    const error = new LinkedInForbiddenError("forbidden", body);
     expect(error.responseBody).toEqual(body);
   });
 });

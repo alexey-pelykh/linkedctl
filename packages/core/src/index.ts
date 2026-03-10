@@ -16,6 +16,11 @@ export {
   clearOAuthTokens,
   resolveConfig,
   ConfigError,
+  PRODUCT_PRESETS,
+  PRODUCT_NAMES,
+  resolveProductScopes,
+  listProfileScopes,
+  findProfilesWithScopes,
 } from "./config/index.js";
 export type {
   OAuthCredentials,
@@ -24,12 +29,15 @@ export type {
   ResolveOptions,
   LoadResult,
   ValidationResult,
+  ProductPreset,
+  ProfileScopeSummary,
 } from "./config/index.js";
 export { getTokenExpiry } from "./auth/token-introspection.js";
 export type { TokenExpiry } from "./auth/token-introspection.js";
 export {
   LinkedInApiError,
   LinkedInAuthError,
+  LinkedInForbiddenError,
   LinkedInRateLimitError,
   LinkedInServerError,
   LinkedInUpgradeRequiredError,
