@@ -63,6 +63,7 @@ import { readFile, stat } from "node:fs/promises";
 import {
   resolveConfig,
   LinkedInClient,
+  LinkedInAuthError,
   getCurrentPersonUrn,
   createPost,
   getPost,
@@ -970,6 +971,57 @@ describe("post tools", () => {
           requiredScopes: expect.not.arrayContaining(["w_organization_social"]),
         }),
       );
+    });
+  });
+
+  describe("post_create auth error", () => {
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await getClient().callTool({
+        name: "post_create",
+        arguments: { text: "Hello world" },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockRejectedValue(new Error("Server error"));
+
+      const result = await getClient().callTool({
+        name: "post_create",
+        arguments: { text: "Hello world" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
     });
   });
 

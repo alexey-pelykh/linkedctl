@@ -5,9 +5,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
-  resolveConfig,
-  LinkedInClient,
-  LinkedInAuthError,
   getUserInfo,
   loadConfigFile,
   validateConfig,
@@ -15,6 +12,8 @@ import {
   clearOAuthTokens,
   revokeAccessToken,
 } from "@linkedctl/core";
+
+import { withClient } from "./with-client.js";
 
 export function registerAuthTools(server: McpServer): void {
   server.registerTool(
@@ -27,40 +26,24 @@ export function registerAuthTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email"],
+        },
+        async (client) => {
+          const userInfo = await getUserInfo(client);
 
-      let userInfo;
-      try {
-        userInfo = await getUserInfo(client);
-      } catch (error: unknown) {
-        if (error instanceof LinkedInAuthError) {
           return {
             content: [
               {
                 type: "text" as const,
-                text: `Authentication failed: ${error.message}\nRun "linkedctl auth login" to re-authenticate.`,
+                text: `Name: ${userInfo.name}\nEmail: ${userInfo.email}\nPicture: ${userInfo.picture}`,
               },
             ],
-            isError: true,
           };
-        }
-        throw error;
-      }
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Name: ${userInfo.name}\nEmail: ${userInfo.email}\nPicture: ${userInfo.picture}`,
-          },
-        ],
-      };
+        },
+      );
     },
   );
 

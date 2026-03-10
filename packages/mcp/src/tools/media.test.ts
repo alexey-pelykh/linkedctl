@@ -60,7 +60,14 @@ vi.mock("@linkedctl/core", () => ({
 }));
 
 import { readFile, stat } from "node:fs/promises";
-import { resolveConfig, LinkedInClient, getCurrentPersonUrn, getOrganization, uploadDocument } from "@linkedctl/core";
+import {
+  resolveConfig,
+  LinkedInClient,
+  LinkedInAuthError,
+  getCurrentPersonUrn,
+  getOrganization,
+  uploadDocument,
+} from "@linkedctl/core";
 
 describe("media tools", () => {
   const { getClient } = setupMcpTestClient();
@@ -169,6 +176,67 @@ describe("media tools", () => {
         profile: "work",
         requiredScopes: ["openid", "profile", "email", "w_member_social"],
       });
+    });
+
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(stat).mockResolvedValue({ size: 1024 } as ReturnType<
+        typeof import("node:fs/promises").stat
+      > extends Promise<infer T>
+        ? T
+        : never);
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-pdf-content"));
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await getClient().callTool({
+        name: "document_upload",
+        arguments: { file: "/path/to/deck.pdf" },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(stat).mockResolvedValue({ size: 1024 } as ReturnType<
+        typeof import("node:fs/promises").stat
+      > extends Promise<infer T>
+        ? T
+        : never);
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake-pdf-content"));
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockRejectedValue(new Error("Server error"));
+
+      const result = await getClient().callTool({
+        name: "document_upload",
+        arguments: { file: "/path/to/deck.pdf" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
     });
 
     it("uploads as organization when as_org is specified", async () => {

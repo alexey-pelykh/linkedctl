@@ -7,14 +7,14 @@ import { readFile, stat } from "node:fs/promises";
 import { extname } from "node:path";
 
 import {
-  resolveConfig,
-  LinkedInClient,
   getCurrentPersonUrn,
   getOrganization,
   uploadDocument,
   DOCUMENT_EXTENSIONS,
   DOCUMENT_MAX_SIZE_BYTES,
 } from "@linkedctl/core";
+
+import { withClient } from "./with-client.js";
 
 export function registerMediaTools(server: McpServer): void {
   server.registerTool(
@@ -51,28 +51,28 @@ export function registerMediaTools(server: McpServer): void {
         };
       }
 
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          let ownerUrn: string;
+          if (args.as_org !== undefined) {
+            await getOrganization(client, args.as_org);
+            ownerUrn = `urn:li:organization:${args.as_org}`;
+          } else {
+            ownerUrn = await getCurrentPersonUrn(client);
+          }
+          const data = new Uint8Array(await readFile(args.file));
 
-      let ownerUrn: string;
-      if (args.as_org !== undefined) {
-        await getOrganization(client, args.as_org);
-        ownerUrn = `urn:li:organization:${args.as_org}`;
-      } else {
-        ownerUrn = await getCurrentPersonUrn(client);
-      }
-      const data = new Uint8Array(await readFile(args.file));
+          const documentUrn = await uploadDocument(client, { owner: ownerUrn, data });
 
-      const documentUrn = await uploadDocument(client, { owner: ownerUrn, data });
-
-      return {
-        content: [{ type: "text" as const, text: `Document uploaded: ${documentUrn}` }],
-      };
+          return {
+            content: [{ type: "text" as const, text: `Document uploaded: ${documentUrn}` }],
+          };
+        },
+      );
     },
   );
 }

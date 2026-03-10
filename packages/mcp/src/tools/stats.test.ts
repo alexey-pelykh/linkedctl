@@ -59,7 +59,14 @@ vi.mock("@linkedctl/core", () => ({
   revokeAccessToken: vi.fn(),
 }));
 
-import { resolveConfig, getPostAnalytics, getMemberAnalytics, getOrgStats } from "@linkedctl/core";
+import {
+  resolveConfig,
+  LinkedInClient,
+  LinkedInAuthError,
+  getPostAnalytics,
+  getMemberAnalytics,
+  getOrgStats,
+} from "@linkedctl/core";
 
 describe("stats tools", () => {
   const { getClient } = setupMcpTestClient();
@@ -212,6 +219,57 @@ describe("stats tools", () => {
         aggregation: undefined,
         dateRange: { end: { year: 2025, month: 12, day: 31 } },
       });
+    });
+  });
+
+  describe("stats_post auth error", () => {
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      } as never);
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getPostAnalytics).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await getClient().callTool({
+        name: "stats_post",
+        arguments: { post_urn: "urn:li:share:123" },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      } as never);
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getPostAnalytics).mockRejectedValue(new Error("Server error"));
+
+      const result = await getClient().callTool({
+        name: "stats_post",
+        arguments: { post_urn: "urn:li:share:123" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
     });
   });
 

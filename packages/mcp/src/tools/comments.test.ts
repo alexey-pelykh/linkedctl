@@ -62,6 +62,7 @@ vi.mock("@linkedctl/core", () => ({
 import {
   resolveConfig,
   LinkedInClient,
+  LinkedInAuthError,
   getCurrentPersonUrn,
   createComment,
   listComments,
@@ -243,6 +244,57 @@ describe("comment tools", () => {
           text: expect.stringContaining("A comment"),
         },
       ]);
+    });
+  });
+
+  describe("comment_create auth error", () => {
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await getClient().callTool({
+        name: "comment_create",
+        arguments: { post_urn: "urn:li:share:123", text: "test" },
+      });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      });
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(getCurrentPersonUrn).mockRejectedValue(new Error("Server error"));
+
+      const result = await getClient().callTool({
+        name: "comment_create",
+        arguments: { post_urn: "urn:li:share:123", text: "test" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
     });
   });
 

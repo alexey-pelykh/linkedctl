@@ -4,15 +4,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  resolveConfig,
-  LinkedInClient,
-  getCurrentPersonUrn,
-  createComment,
-  listComments,
-  getComment,
-  deleteComment,
-} from "@linkedctl/core";
+import { getCurrentPersonUrn, createComment, listComments, getComment, deleteComment } from "@linkedctl/core";
+
+import { withClient } from "./with-client.js";
 
 export function registerCommentTools(server: McpServer): void {
   server.registerTool(
@@ -28,26 +22,26 @@ export function registerCommentTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const actorUrn =
+            args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : await getCurrentPersonUrn(client);
 
-      const actorUrn =
-        args.as_org !== undefined ? `urn:li:organization:${args.as_org}` : await getCurrentPersonUrn(client);
+          const commentUrn = await createComment(client, {
+            actor: actorUrn,
+            object: args.post_urn,
+            message: args.text,
+          });
 
-      const commentUrn = await createComment(client, {
-        actor: actorUrn,
-        object: args.post_urn,
-        message: args.text,
-      });
-
-      return {
-        content: [{ type: "text" as const, text: `Comment created: ${commentUrn}` }],
-      };
+          return {
+            content: [{ type: "text" as const, text: `Comment created: ${commentUrn}` }],
+          };
+        },
+      );
     },
   );
 
@@ -62,29 +56,29 @@ export function registerCommentTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const comments = await listComments(client, { object: args.post_urn });
 
-      const comments = await listComments(client, { object: args.post_urn });
+          if (comments.length === 0) {
+            return {
+              content: [{ type: "text" as const, text: "No comments found." }],
+            };
+          }
 
-      if (comments.length === 0) {
-        return {
-          content: [{ type: "text" as const, text: "No comments found." }],
-        };
-      }
+          const lines = comments.map(
+            (c) => `URN: ${c.urn}\nActor: ${c.actor}\nMessage: ${c.message}\nCreated: ${c.createdAt}`,
+          );
 
-      const lines = comments.map(
-        (c) => `URN: ${c.urn}\nActor: ${c.actor}\nMessage: ${c.message}\nCreated: ${c.createdAt}`,
+          return {
+            content: [{ type: "text" as const, text: lines.join("\n\n") }],
+          };
+        },
       );
-
-      return {
-        content: [{ type: "text" as const, text: lines.join("\n\n") }],
-      };
     },
   );
 
@@ -99,24 +93,24 @@ export function registerCommentTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          const comment = await getComment(client, { commentUrn: args.comment_urn });
 
-      const comment = await getComment(client, { commentUrn: args.comment_urn });
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `URN: ${comment.urn}\nActor: ${comment.actor}\nObject: ${comment.object}\nMessage: ${comment.message}\nCreated: ${comment.createdAt}`,
-          },
-        ],
-      };
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `URN: ${comment.urn}\nActor: ${comment.actor}\nObject: ${comment.object}\nMessage: ${comment.message}\nCreated: ${comment.createdAt}`,
+              },
+            ],
+          };
+        },
+      );
     },
   );
 
@@ -131,19 +125,19 @@ export function registerCommentTools(server: McpServer): void {
       },
     },
     async (args) => {
-      const { config } = await resolveConfig({
-        profile: args.profile,
-        requiredScopes: ["openid", "profile", "email", "w_member_social"],
-      });
-      const accessToken = config.oauth?.accessToken ?? "";
-      const apiVersion = config.apiVersion ?? "";
-      const client = new LinkedInClient({ accessToken, apiVersion });
+      return withClient(
+        {
+          profile: args.profile,
+          requiredScopes: ["openid", "profile", "email", "w_member_social"],
+        },
+        async (client) => {
+          await deleteComment(client, { commentUrn: args.comment_urn });
 
-      await deleteComment(client, { commentUrn: args.comment_urn });
-
-      return {
-        content: [{ type: "text" as const, text: "Comment deleted." }],
-      };
+          return {
+            content: [{ type: "text" as const, text: "Comment deleted." }],
+          };
+        },
+      );
     },
   );
 }

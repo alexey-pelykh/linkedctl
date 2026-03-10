@@ -59,7 +59,14 @@ vi.mock("@linkedctl/core", () => ({
   revokeAccessToken: vi.fn(),
 }));
 
-import { resolveConfig, listOrganizations, getOrganization, getOrganizationFollowerCount } from "@linkedctl/core";
+import {
+  resolveConfig,
+  LinkedInClient,
+  LinkedInAuthError,
+  listOrganizations,
+  getOrganization,
+  getOrganizationFollowerCount,
+} from "@linkedctl/core";
 
 describe("org tools", () => {
   const { getClient } = setupMcpTestClient();
@@ -101,6 +108,51 @@ describe("org tools", () => {
       await getClient().callTool({ name: "org_list", arguments: { count: 5, start: 10 } });
 
       expect(listOrganizations).toHaveBeenCalledWith(expect.anything(), { count: 5, start: 10 });
+    });
+  });
+
+  describe("org_list auth error", () => {
+    it("returns error with re-auth guidance for expired token", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "expired-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      } as never);
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listOrganizations).mockRejectedValue(new LinkedInAuthError("HTTP 401: Unauthorized"));
+
+      const result = await getClient().callTool({ name: "org_list", arguments: {} });
+
+      expect(result.content).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining('Run "linkedctl auth login" to re-authenticate'),
+        },
+      ]);
+      expect(result.isError).toBe(true);
+    });
+
+    it("re-throws non-auth errors", async () => {
+      vi.mocked(resolveConfig).mockResolvedValue({
+        config: {
+          oauth: { accessToken: "test-token" },
+          apiVersion: "202401",
+        },
+        warnings: [],
+      } as never);
+      vi.mocked(LinkedInClient).mockImplementation(function () {
+        return Object.create(null);
+      } as unknown as typeof LinkedInClient);
+      vi.mocked(listOrganizations).mockRejectedValue(new Error("Server error"));
+
+      const result = await getClient().callTool({ name: "org_list", arguments: {} });
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([{ type: "text", text: "Server error" }]);
     });
   });
 
