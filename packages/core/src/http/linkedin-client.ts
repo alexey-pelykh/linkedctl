@@ -52,10 +52,17 @@ export class LinkedInClient {
    */
   async request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await this.sendRequest(path, init);
-    if (response.status === 204) {
-      return undefined as T;
-    }
     return (await response.json()) as T;
+  }
+
+  /**
+   * Send an HTTP request that expects no response body (e.g. DELETE, PATCH).
+   *
+   * Suitable for endpoints that return 204 No Content or where the response
+   * body is intentionally discarded.
+   */
+  async requestVoid(path: string, init?: RequestInit): Promise<void> {
+    await this.sendRequest(path, init);
   }
 
   /**

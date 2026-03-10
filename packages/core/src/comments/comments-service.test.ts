@@ -9,6 +9,7 @@ function mockClient(overrides: Partial<LinkedInClient> = {}): LinkedInClient {
   return {
     create: vi.fn().mockResolvedValue("urn:li:comment:(urn:li:activity:100,200)"),
     request: vi.fn().mockResolvedValue(undefined),
+    requestVoid: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as LinkedInClient;
 }
@@ -148,13 +149,13 @@ describe("getComment", () => {
 });
 
 describe("deleteComment", () => {
-  it("calls client.request with DELETE method and URL-encoded URN", async () => {
+  it("calls client.requestVoid with DELETE method and URL-encoded URN", async () => {
     const commentUrn = "urn:li:comment:(urn:li:activity:100,200)";
     const client = mockClient();
 
     await deleteComment(client, { commentUrn });
 
-    expect(client.request).toHaveBeenCalledWith(`/rest/comments/${encodeURIComponent(commentUrn)}`, {
+    expect(client.requestVoid).toHaveBeenCalledWith(`/rest/comments/${encodeURIComponent(commentUrn)}`, {
       method: "DELETE",
     });
   });
