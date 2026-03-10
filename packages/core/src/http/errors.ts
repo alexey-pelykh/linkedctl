@@ -27,6 +27,20 @@ export class LinkedInAuthError extends LinkedInApiError {
 }
 
 /**
+ * Thrown on HTTP 403 — the request is forbidden.
+ *
+ * This typically means the OAuth access token does not have the required
+ * permissions, or the LinkedIn Developer App does not have the necessary
+ * product enabled.
+ */
+export class LinkedInForbiddenError extends LinkedInApiError {
+  constructor(message: string, responseBody?: unknown) {
+    super(message, 403, responseBody);
+    this.name = "LinkedInForbiddenError";
+  }
+}
+
+/**
  * Thrown on HTTP 429 when all retry attempts have been exhausted.
  */
 export class LinkedInRateLimitError extends LinkedInApiError {

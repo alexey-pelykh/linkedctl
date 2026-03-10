@@ -6,6 +6,7 @@ import { LinkedInClient } from "./linkedin-client.js";
 import {
   LinkedInApiError,
   LinkedInAuthError,
+  LinkedInForbiddenError,
   LinkedInRateLimitError,
   LinkedInServerError,
   LinkedInUpgradeRequiredError,
@@ -266,9 +267,44 @@ describe("LinkedInClient", () => {
     });
   });
 
-  describe("other error status codes", () => {
-    it("throws LinkedInApiError for 4xx (non-401, non-429)", async () => {
+  describe("403 forbidden error", () => {
+    it("throws LinkedInForbiddenError with product guidance", async () => {
+      fetchSpy.mockResolvedValue(jsonResponse({}, 403));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.request("/v2/me")).rejects.toThrow(LinkedInForbiddenError);
+      await expect(client.request("/v2/me")).rejects.toThrow(/product enabled/);
+    });
+
+    it("includes response body in error", async () => {
+      const errorBody = { code: "FORBIDDEN", message: "Access denied" };
+      fetchSpy.mockResolvedValueOnce(jsonResponse(errorBody, 403));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      try {
+        await client.request("/v2/me");
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(LinkedInForbiddenError);
+        expect((error as LinkedInForbiddenError).responseBody).toEqual(errorBody);
+      }
+    });
+
+    it("does not retry on 403", async () => {
       fetchSpy.mockResolvedValueOnce(jsonResponse({}, 403));
+
+      const client = new LinkedInClient(CLIENT_OPTIONS);
+
+      await expect(client.request("/v2/me")).rejects.toThrow(LinkedInForbiddenError);
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("other error status codes", () => {
+    it("throws LinkedInApiError for 4xx (non-401, non-403, non-429)", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({}, 409));
 
       const client = new LinkedInClient(CLIENT_OPTIONS);
 
@@ -353,8 +389,8 @@ describe("LinkedInClient", () => {
 
   describe("error response body handling", () => {
     it("includes JSON error body in thrown error", async () => {
-      const errorBody = { code: "FORBIDDEN", message: "Access denied" };
-      fetchSpy.mockResolvedValueOnce(jsonResponse(errorBody, 403));
+      const errorBody = { code: "NOT_FOUND", message: "Resource not found" };
+      fetchSpy.mockResolvedValueOnce(jsonResponse(errorBody, 404));
 
       const client = new LinkedInClient(CLIENT_OPTIONS);
 

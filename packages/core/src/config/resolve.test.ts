@@ -229,4 +229,67 @@ api-version: "202601"
 
     await expect(resolveConfig({ home: dir, cwd: dir, env: {} })).rejects.toThrow(/No access token configured/);
   });
+
+  it("suggests matching profile when scope mismatch occurs", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  access-token: "tok"
+  scope: "openid profile"
+api-version: "202601"
+`,
+    );
+
+    // Create a profile that has the required scopes
+    const profileDir = join(dir, ".linkedctl");
+    await mkdir(profileDir, { recursive: true });
+    await writeFile(
+      join(profileDir, "analytics.yaml"),
+      `oauth:
+  scope: "openid profile r_member_postAnalytics"
+`,
+    );
+
+    await expect(
+      resolveConfig({ home: dir, cwd: dir, env: {}, requiredScopes: ["openid", "profile", "r_member_postAnalytics"] }),
+    ).rejects.toThrow(/--profile analytics/);
+  });
+
+  it("suggests auth setup command when no matching profile exists", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  access-token: "tok"
+  scope: "openid profile"
+api-version: "202601"
+`,
+    );
+
+    await expect(
+      resolveConfig({ home: dir, cwd: dir, env: {}, requiredScopes: ["openid", "profile", "r_member_postAnalytics"] }),
+    ).rejects.toThrow(/auth setup --product community-management/);
+  });
+
+  it("explains product exclusivity when scopes span exclusive products", async () => {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, ".linkedctl.yaml"),
+      `oauth:
+  access-token: "tok"
+  scope: "openid profile"
+api-version: "202601"
+`,
+    );
+
+    await expect(
+      resolveConfig({
+        home: dir,
+        cwd: dir,
+        env: {},
+        requiredScopes: ["w_member_social", "r_member_postAnalytics"],
+      }),
+    ).rejects.toThrow(/product exclusivity/);
+  });
 });
