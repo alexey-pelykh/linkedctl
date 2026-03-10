@@ -101,6 +101,78 @@ describe("profile list", () => {
     expect(output).toEqual([{ name: "test", status: "not configured" }]);
   });
 
+  it("shows scope in json output when configured", async () => {
+    const futureExp = Math.floor(Date.now() / 1000) + 86400 * 30;
+    const token = buildJwt({ exp: futureExp });
+
+    vi.mocked(readdir).mockResolvedValue(["work.yaml"] as unknown as Awaited<ReturnType<typeof readdir>>);
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: { oauth: { "access-token": token, scope: "r_liteprofile w_member_social" } },
+      path: "/mock/home/.linkedctl/work.yaml",
+    });
+
+    const cmd = listCommand();
+    await cmd.parseAsync(["--format", "json"], { from: "user" });
+
+    const output = JSON.parse(consoleSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>[];
+    expect(output).toEqual([
+      expect.objectContaining({
+        name: "work",
+        status: "authenticated",
+        scope: "r_liteprofile w_member_social",
+      }),
+    ]);
+  });
+
+  it("omits scope from json output when not configured", async () => {
+    vi.mocked(readdir).mockResolvedValue(["dev.yaml"] as unknown as Awaited<ReturnType<typeof readdir>>);
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: { oauth: { "access-token": "AQVh7cKZopaque" } },
+      path: "/mock/home/.linkedctl/dev.yaml",
+    });
+
+    const cmd = listCommand();
+    await cmd.parseAsync(["--format", "json"], { from: "user" });
+
+    const output = JSON.parse(consoleSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>[];
+    expect(output[0]).not.toHaveProperty("scope");
+  });
+
+  it("shows scope column with dash in table when scope not configured", async () => {
+    vi.mocked(readdir).mockResolvedValue(["dev.yaml"] as unknown as Awaited<ReturnType<typeof readdir>>);
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: { oauth: { "access-token": "AQVh7cKZopaque" } },
+      path: "/mock/home/.linkedctl/dev.yaml",
+    });
+
+    const cmd = listCommand();
+    await cmd.parseAsync(["--format", "table"], { from: "user" });
+
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    const lines = output.split("\n");
+    expect(lines[0]).toMatch(/scope/);
+    expect(lines[2]).toMatch(/-/);
+  });
+
+  it("shows scope value in table when configured", async () => {
+    const futureExp = Math.floor(Date.now() / 1000) + 86400 * 10;
+    const token = buildJwt({ exp: futureExp });
+
+    vi.mocked(readdir).mockResolvedValue(["work.yaml"] as unknown as Awaited<ReturnType<typeof readdir>>);
+    vi.spyOn(core, "loadConfigFile").mockResolvedValue({
+      raw: { oauth: { "access-token": token, scope: "r_liteprofile" } },
+      path: "/mock/home/.linkedctl/work.yaml",
+    });
+
+    const cmd = listCommand();
+    await cmd.parseAsync(["--format", "table"], { from: "user" });
+
+    const output = consoleSpy.mock.calls[0]?.[0] as string;
+    const lines = output.split("\n");
+    expect(lines[0]).toMatch(/scope/);
+    expect(lines[2]).toMatch(/r_liteprofile/);
+  });
+
   it("shows not configured when access token is missing", async () => {
     vi.mocked(readdir).mockResolvedValue(["work.yaml"] as unknown as Awaited<ReturnType<typeof readdir>>);
     vi.spyOn(core, "loadConfigFile").mockResolvedValue({
@@ -228,12 +300,12 @@ describe("profile list", () => {
     const output = consoleSpy.mock.calls[0]?.[0] as string;
     const lines = output.split("\n");
     // Header line should have column names
-    expect(lines[0]).toMatch(/name\s+status\s+expires/);
+    expect(lines[0]).toMatch(/name\s+status\s+scope\s+expires/);
     // Separator line
     expect(lines[1]).toMatch(/─+/);
     // Data lines
-    expect(lines[2]).toMatch(/personal\s+authenticated\s+in \d+d/);
-    expect(lines[3]).toMatch(/test\s+not configured/);
+    expect(lines[2]).toMatch(/personal\s+authenticated\s+-\s+in \d+d/);
+    expect(lines[3]).toMatch(/test\s+not configured\s+-/);
   });
 
   it("excludes expiresAt from table format", async () => {
