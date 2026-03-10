@@ -12,6 +12,7 @@ import { resolveFormat, formatOutput } from "../../output/index.js";
 interface ProfileInfo {
   name: string;
   status: "authenticated" | "expired" | "not configured";
+  scope?: string | undefined;
   expiresAt?: string | undefined;
   expires?: string | undefined;
 }
@@ -48,21 +49,23 @@ async function getProfileStatus(name: string): Promise<ProfileInfo> {
   }
 
   const { config } = validateConfig(raw);
+  const scope = config.oauth?.scope;
 
   if (config.oauth?.accessToken === undefined || config.oauth.accessToken === "") {
-    return { name, status: "not configured" };
+    return { name, status: "not configured", scope };
   }
 
   const expiry = getTokenExpiry(config.oauth.accessToken);
 
   if (expiry === undefined) {
-    return { name, status: "authenticated" };
+    return { name, status: "authenticated", scope };
   }
 
   if (expiry.isExpired) {
     return {
       name,
       status: "expired",
+      scope,
       expiresAt: expiry.expiresAt.toISOString(),
       expires: formatTimeDelta(expiry.expiresAt),
     };
@@ -71,6 +74,7 @@ async function getProfileStatus(name: string): Promise<ProfileInfo> {
   return {
     name,
     status: "authenticated",
+    scope,
     expiresAt: expiry.expiresAt.toISOString(),
     expires: formatTimeDelta(expiry.expiresAt),
   };
@@ -107,7 +111,9 @@ export function listCommand(): Command {
     const format = resolveFormat(opts["format"] as OutputFormat | undefined, process.stdout, globalJson);
 
     const data =
-      format === "json" ? profiles : profiles.map((p) => ({ name: p.name, status: p.status, expires: p.expires }));
+      format === "json"
+        ? profiles
+        : profiles.map((p) => ({ name: p.name, status: p.status, scope: p.scope ?? "-", expires: p.expires }));
 
     console.log(formatOutput(data, format));
   });
