@@ -127,3 +127,12 @@ export type {
   MetricResult,
   PostAnalytics,
 } from "./member-stats/types.js";
+export { getOrgStats } from "./org-stats/org-stats-service.js";
+export type { GetOrgStatsOptions } from "./org-stats/org-stats-service.js";
+export type {
+  OrgStatsTimeGranularity,
+  TimeRange,
+  ShareStatistics,
+  OrgStatsElement,
+  OrgStatsResponse,
+} from "./org-stats/types.js";
