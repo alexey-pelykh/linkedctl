@@ -30,6 +30,8 @@ import {
   listOrganizations,
   getOrganization,
   getOrganizationFollowerCount,
+  getPostAnalytics,
+  getMemberAnalytics,
   SUPPORTED_IMAGE_TYPES,
   DOCUMENT_EXTENSIONS,
   DOCUMENT_MAX_SIZE_BYTES,
@@ -40,7 +42,7 @@ import {
   clearOAuthTokens,
   revokeAccessToken,
 } from "@linkedctl/core";
-import type { PostContent, PostLifecycleState, ReactionType } from "@linkedctl/core";
+import type { PostContent, PostLifecycleState, ReactionType, AnalyticsDateRange } from "@linkedctl/core";
 
 /**
  * Create and configure the LinkedCtl MCP server with all tools registered.
@@ -1006,5 +1008,110 @@ export function createMcpServer(): McpServer {
     },
   );
 
+  server.registerTool(
+    "stats_post",
+    {
+      title: "Post Stats",
+      description:
+        "Get analytics for a single LinkedIn post (impressions, reach, reactions, comments, reshares). Requires the Community Management API product (r_member_postAnalytics scope).",
+      inputSchema: {
+        post_urn: z.string().describe("Post URN (e.g. urn:li:share:123 or urn:li:ugcPost:123)"),
+        aggregation: z
+          .enum(["DAILY", "TOTAL"])
+          .optional()
+          .describe("Aggregation mode (defaults to TOTAL). DAILY returns per-day breakdown."),
+        from: z
+          .string()
+          .optional()
+          .describe("Start date inclusive (YYYY-MM-DD). If omitted, lifetime stats are returned."),
+        to: z.string().optional().describe("End date exclusive (YYYY-MM-DD). If omitted, lifetime stats are returned."),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      const dateRange = parseDateRange(args.from, args.to);
+      const analytics = await getPostAnalytics(client, {
+        postUrn: args.post_urn,
+        aggregation: args.aggregation,
+        dateRange,
+      });
+
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(analytics, null, 2) }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "stats_me",
+    {
+      title: "My Stats",
+      description:
+        "Get aggregated analytics across all your LinkedIn posts (impressions, reach, reactions, comments, reshares). Requires the Community Management API product (r_member_postAnalytics scope).",
+      inputSchema: {
+        aggregation: z
+          .enum(["DAILY", "TOTAL"])
+          .optional()
+          .describe("Aggregation mode (defaults to TOTAL). DAILY returns per-day breakdown."),
+        from: z
+          .string()
+          .optional()
+          .describe("Start date inclusive (YYYY-MM-DD). If omitted, lifetime totals are returned."),
+        to: z
+          .string()
+          .optional()
+          .describe("End date exclusive (YYYY-MM-DD). If omitted, lifetime totals are returned."),
+        profile: z.string().optional().describe("Profile name to use from config file"),
+      },
+    },
+    async (args) => {
+      const { config } = await resolveConfig({
+        profile: args.profile,
+        requiredScopes: ["openid", "profile", "email", "r_member_postAnalytics"],
+      });
+      const accessToken = config.oauth?.accessToken ?? "";
+      const apiVersion = config.apiVersion ?? "";
+      const client = new LinkedInClient({ accessToken, apiVersion });
+
+      const dateRange = parseDateRange(args.from, args.to);
+      const analytics = await getMemberAnalytics(client, {
+        aggregation: args.aggregation,
+        dateRange,
+      });
+
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(analytics, null, 2) }],
+      };
+    },
+  );
+
   return server;
+}
+
+/**
+ * Parse optional from/to date strings (YYYY-MM-DD) into an AnalyticsDateRange.
+ * Returns undefined if neither date is provided.
+ */
+function parseDateRange(from?: string, to?: string): AnalyticsDateRange | undefined {
+  if (from === undefined && to === undefined) {
+    return undefined;
+  }
+  const range: AnalyticsDateRange = {};
+  if (from !== undefined) {
+    const parts = from.split("-").map(Number);
+    range.start = { year: parts[0] ?? 0, month: parts[1] ?? 0, day: parts[2] ?? 0 };
+  }
+  if (to !== undefined) {
+    const parts = to.split("-").map(Number);
+    range.end = { year: parts[0] ?? 0, month: parts[1] ?? 0, day: parts[2] ?? 0 };
+  }
+  return range;
 }
