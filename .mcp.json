@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "linkedctl": {
+      "command": "npx",
+      "args": ["linkedctl", "mcp"]
+    }
+  }
+}

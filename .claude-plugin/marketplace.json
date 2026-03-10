@@ -1,0 +1,25 @@
+{
+  "name": "linkedctl",
+  "owner": {
+    "name": "Alexey Pelykh"
+  },
+  "metadata": {
+    "description": "LinkedIn API toolkit for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "linkedctl",
+      "source": "./",
+      "description": "LinkedIn API toolkit — MCP server and workflow guidance for Claude Code",
+      "version": "0.5.0",
+      "author": {
+        "name": "Alexey Pelykh"
+      },
+      "homepage": "https://github.com/alexey-pelykh/linkedctl",
+      "repository": "https://github.com/alexey-pelykh/linkedctl",
+      "license": "AGPL-3.0-only",
+      "keywords": ["linkedin", "linkedin-api", "mcp", "social-media", "automation"],
+      "category": "productivity"
+    }
+  ]
+}
