@@ -6,12 +6,12 @@
     "url": "https://github.com/alexey-pelykh/linkedctl",
     "source": "github"
   },
-  "version": "0.0.0",
+  "version": "0.5.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "linkedctl",
-      "version": "0.0.0",
+      "version": "0.5.0",
       "transport": {
         "type": "stdio"
       },
