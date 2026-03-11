@@ -16,8 +16,8 @@ catalogs:
       specifier: ^3.2.4
       version: 3.2.4
     "@types/node":
-      specifier: ^24
-      version: 24.11.0
+      specifier: ^25
+      version: 25.4.0
     "@vitest/coverage-v8":
       specifier: ^4.0.18
       version: 4.0.18
@@ -66,7 +66,7 @@ importers:
         version: 3.2.4(eslint@10.0.3)
       "@vitest/coverage-v8":
         specifier: "catalog:"
-        version: 4.0.18(vitest@4.0.18(@types/node@24.11.0)(yaml@2.8.2))
+        version: 4.0.18(vitest@4.0.18(@types/node@25.4.0)(yaml@2.8.2))
       eslint:
         specifier: "catalog:"
         version: 10.0.3
@@ -87,7 +87,7 @@ importers:
         version: 8.56.1(eslint@10.0.3)(typescript@5.9.3)
       vitest:
         specifier: "catalog:"
-        version: 4.0.18(@types/node@24.11.0)(yaml@2.8.2)
+        version: 4.0.18(@types/node@25.4.0)(yaml@2.8.2)
 
   packages/cli:
     dependencies:
@@ -100,7 +100,7 @@ importers:
     devDependencies:
       "@types/node":
         specifier: "catalog:"
-        version: 24.11.0
+        version: 25.4.0
       eslint:
         specifier: "catalog:"
         version: 10.0.3
@@ -109,7 +109,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: "catalog:"
-        version: 4.0.18(@types/node@24.11.0)(yaml@2.8.2)
+        version: 4.0.18(@types/node@25.4.0)(yaml@2.8.2)
 
   packages/core:
     dependencies:
@@ -119,7 +119,7 @@ importers:
     devDependencies:
       "@types/node":
         specifier: "catalog:"
-        version: 24.11.0
+        version: 25.4.0
       eslint:
         specifier: "catalog:"
         version: 10.0.3
@@ -131,7 +131,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: "catalog:"
-        version: 4.0.18(@types/node@24.11.0)(yaml@2.8.2)
+        version: 4.0.18(@types/node@25.4.0)(yaml@2.8.2)
 
   packages/e2e:
     dependencies:
@@ -156,7 +156,7 @@ importers:
     devDependencies:
       "@types/node":
         specifier: "catalog:"
-        version: 24.11.0
+        version: 25.4.0
       eslint:
         specifier: "catalog:"
         version: 10.0.3
@@ -165,7 +165,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: "catalog:"
-        version: 4.0.18(@types/node@24.11.0)(yaml@2.8.2)
+        version: 4.0.18(@types/node@25.4.0)(yaml@2.8.2)
 
   packages/linkedctl:
     dependencies:
@@ -181,7 +181,7 @@ importers:
     devDependencies:
       "@types/node":
         specifier: "catalog:"
-        version: 24.11.0
+        version: 25.4.0
       eslint:
         specifier: "catalog:"
         version: 10.0.3
@@ -190,7 +190,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: "catalog:"
-        version: 4.0.18(@types/node@24.11.0)(yaml@2.8.2)
+        version: 4.0.18(@types/node@25.4.0)(yaml@2.8.2)
 
   packages/mcp:
     dependencies:
@@ -206,7 +206,7 @@ importers:
     devDependencies:
       "@types/node":
         specifier: "catalog:"
-        version: 24.11.0
+        version: 25.4.0
       eslint:
         specifier: "catalog:"
         version: 10.0.3
@@ -215,7 +215,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: "catalog:"
-        version: 4.0.18(@types/node@24.11.0)(yaml@2.8.2)
+        version: 4.0.18(@types/node@25.4.0)(yaml@2.8.2)
 
 packages:
   "@babel/helper-string-parser@7.27.1":
@@ -727,9 +727,9 @@ packages:
     resolution:
       { integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA== }
 
-  "@types/node@24.11.0":
+  "@types/node@25.4.0":
     resolution:
-      { integrity: sha512-fPxQqz4VTgPI/IQ+lj9r0h+fDR66bzoeMGHp8ASee+32OSGIkeASsoZuJixsQoVef1QJbeubcPBxKk22QVoWdw== }
+      { integrity: sha512-9wLpoeWuBlcbBpOY3XmzSTG3oscB6xjBEEtn+pYXTfhyXhIxC5FsBer2KTopBlvKEiW9l13po9fq+SJY/5lkhw== }
 
   "@types/unist@3.0.3":
     resolution:
@@ -1779,9 +1779,9 @@ packages:
     resolution:
       { integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A== }
 
-  undici-types@7.16.0:
+  undici-types@7.18.2:
     resolution:
-      { integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw== }
+      { integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w== }
 
   unpipe@1.0.0:
     resolution:
@@ -2213,9 +2213,9 @@ snapshots:
 
   "@types/json-schema@7.0.15": {}
 
-  "@types/node@24.11.0":
+  "@types/node@25.4.0":
     dependencies:
-      undici-types: 7.16.0
+      undici-types: 7.18.2
 
   "@types/unist@3.0.3": {}
 
@@ -2310,7 +2310,7 @@ snapshots:
       "@typescript-eslint/types": 8.56.1
       eslint-visitor-keys: 5.0.1
 
-  "@vitest/coverage-v8@4.0.18(vitest@4.0.18(@types/node@24.11.0)(yaml@2.8.2))":
+  "@vitest/coverage-v8@4.0.18(vitest@4.0.18(@types/node@25.4.0)(yaml@2.8.2))":
     dependencies:
       "@bcoe/v8-coverage": 1.0.2
       "@vitest/utils": 4.0.18
@@ -2322,7 +2322,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@types/node@24.11.0)(yaml@2.8.2)
+      vitest: 4.0.18(@types/node@25.4.0)(yaml@2.8.2)
 
   "@vitest/expect@4.0.18":
     dependencies:
@@ -2333,13 +2333,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.0.3
 
-  "@vitest/mocker@4.0.18(vite@7.3.1(@types/node@24.11.0)(yaml@2.8.2))":
+  "@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.4.0)(yaml@2.8.2))":
     dependencies:
       "@vitest/spy": 4.0.18
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.1(@types/node@24.11.0)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.4.0)(yaml@2.8.2)
 
   "@vitest/pretty-format@4.0.18":
     dependencies:
@@ -3142,7 +3142,7 @@ snapshots:
 
   uc.micro@2.1.0: {}
 
-  undici-types@7.16.0: {}
+  undici-types@7.18.2: {}
 
   unpipe@1.0.0: {}
 
@@ -3152,7 +3152,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@7.3.1(@types/node@24.11.0)(yaml@2.8.2):
+  vite@7.3.1(@types/node@25.4.0)(yaml@2.8.2):
     dependencies:
       esbuild: 0.27.3
       fdir: 6.5.0(picomatch@4.0.3)
@@ -3161,14 +3161,14 @@ snapshots:
       rollup: 4.59.0
       tinyglobby: 0.2.15
     optionalDependencies:
-      "@types/node": 24.11.0
+      "@types/node": 25.4.0
       fsevents: 2.3.3
       yaml: 2.8.2
 
-  vitest@4.0.18(@types/node@24.11.0)(yaml@2.8.2):
+  vitest@4.0.18(@types/node@25.4.0)(yaml@2.8.2):
     dependencies:
       "@vitest/expect": 4.0.18
-      "@vitest/mocker": 4.0.18(vite@7.3.1(@types/node@24.11.0)(yaml@2.8.2))
+      "@vitest/mocker": 4.0.18(vite@7.3.1(@types/node@25.4.0)(yaml@2.8.2))
       "@vitest/pretty-format": 4.0.18
       "@vitest/runner": 4.0.18
       "@vitest/snapshot": 4.0.18
@@ -3185,10 +3185,10 @@ snapshots:
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vite: 7.3.1(@types/node@24.11.0)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.4.0)(yaml@2.8.2)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      "@types/node": 24.11.0
+      "@types/node": 25.4.0
     transitivePeerDependencies:
       - jiti
       - less
