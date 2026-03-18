@@ -364,6 +364,19 @@ describe("listPosts", () => {
   });
 });
 
+describe("createPost REST.li escaping", () => {
+  it("escapes REST.li reserved characters in commentary", async () => {
+    const client = mockClient("urn:li:share:500");
+    await createPost(client, {
+      author: "urn:li:person:abc",
+      text: "129 of them (18%) hit the error",
+    });
+
+    const call = vi.mocked(client.create).mock.calls[0];
+    expect(call?.[1]).toHaveProperty("commentary", "129 of them \\(18%\\) hit the error");
+  });
+});
+
 describe("updatePost", () => {
   it("sends PARTIAL_UPDATE with commentary patch", async () => {
     const client = mockClient("");
@@ -384,6 +397,20 @@ describe("updatePost", () => {
         },
       }),
     });
+  });
+
+  it("escapes REST.li reserved characters in commentary", async () => {
+    const client = mockClient("");
+
+    await updatePost(client, "urn:li:share:123", { text: "text (with parens) here" });
+
+    const body = JSON.parse(vi.mocked(client.requestVoid).mock.calls[0]?.[1]?.body as string) as Record<
+      string,
+      unknown
+    >;
+    expect((body["patch"] as Record<string, Record<string, string>>)["$set"]?.["commentary"]).toBe(
+      "text \\(with parens\\) here",
+    );
   });
 });
 

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import type { LinkedInClient } from "../http/linkedin-client.js";
+import { escapeRestliReservedCharacters } from "../restli/escape.js";
 import type { PostContent, PostData, PostLifecycleState, PostListResponse, PostVisibility } from "./types.js";
 
 /**
@@ -47,7 +48,7 @@ export async function createTextPost(client: LinkedInClient, options: CreateText
 export async function createPost(client: LinkedInClient, options: CreatePostOptions): Promise<string> {
   const body: Record<string, unknown> = {
     author: options.author,
-    commentary: options.text,
+    commentary: escapeRestliReservedCharacters(options.text),
     visibility: options.visibility ?? "PUBLIC",
     distribution: {
       feedDistribution: "MAIN_FEED",
@@ -124,7 +125,7 @@ export async function updatePost(client: LinkedInClient, postUrn: string, option
     body: JSON.stringify({
       patch: {
         $set: {
-          commentary: options.text,
+          commentary: escapeRestliReservedCharacters(options.text),
         },
       },
     }),

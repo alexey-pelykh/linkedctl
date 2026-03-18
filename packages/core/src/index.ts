@@ -58,6 +58,7 @@ export { getCurrentPersonUrn } from "./userinfo/userinfo-service.js";
 export { uploadImage } from "./media/media-service.js";
 export type { UploadImageOptions } from "./media/media-service.js";
 export { SUPPORTED_IMAGE_TYPES } from "./media/types.js";
+export { escapeRestliReservedCharacters } from "./restli/escape.js";
 export { createTextPost, createPost, getPost, listPosts, updatePost, deletePost } from "./posts/posts-service.js";
 export type {
   CreateTextPostOptions,
