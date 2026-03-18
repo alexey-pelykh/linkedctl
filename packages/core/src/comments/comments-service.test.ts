@@ -30,6 +30,21 @@ describe("createComment", () => {
     });
   });
 
+  it("escapes REST.li reserved characters in message text", async () => {
+    const client = mockClient();
+    await createComment(client, {
+      actor: "urn:li:person:abc",
+      object: "urn:li:share:123",
+      message: "Great post (really)!",
+    });
+
+    expect(client.create).toHaveBeenCalledWith("/rest/comments", {
+      actor: "urn:li:person:abc",
+      object: "urn:li:share:123",
+      message: { text: "Great post \\(really\\)!" },
+    });
+  });
+
   it("returns the comment URN from create", async () => {
     const client = mockClient();
     const urn = await createComment(client, {

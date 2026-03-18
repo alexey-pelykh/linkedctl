@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Oleksii PELYKH
 
 import type { LinkedInClient } from "../http/linkedin-client.js";
+import { escapeRestliReservedCharacters } from "../restli/escape.js";
 import type { Comment } from "./types.js";
 
 /**
@@ -65,7 +66,7 @@ export async function createComment(client: LinkedInClient, options: CreateComme
   return client.create("/rest/comments", {
     actor: options.actor,
     object: options.object,
-    message: { text: options.message },
+    message: { text: escapeRestliReservedCharacters(options.message) },
   });
 }
 
