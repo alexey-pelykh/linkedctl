@@ -144,6 +144,9 @@ All packages use conditional exports with `types` + `import`. `@linkedctl/core` 
 
 - **CI**: Runs on push/PR to `main`; 3-OS matrix (ubuntu, macos, windows); format-checks, builds, type-checks, lints, license-checks, publish-checks, tests
 - **Release**: Triggered by GitHub Release publish; validates, stamps version from git tag, publishes to npm with provenance
+- **claude-plugin**: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and `server.json` versions must match the npm package version (set by the release tag) and be bumped together on each release
+  - The release workflow does **not** auto-bump these files — after each release, open a PR to update their `"version"` fields to match the new tag
+  - All three files must always show the same version string
 - **Setup**: Composite action at `.github/actions/setup/` (pnpm + Node.js 24 + frozen lockfile + Turbo cache)
 - Coverage uploaded to Codecov on ubuntu only
 

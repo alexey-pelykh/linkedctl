@@ -73,6 +73,18 @@ jobs:
             const y = fs.readFileSync('smithery.yaml', 'utf8');
             fs.writeFileSync('smithery.yaml', y.replace(/linkedctl@[^'\"]+/g, 'linkedctl@' + process.env.VERSION));
           "
+          VERSION="$VERSION" node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('.claude-plugin/plugin.json', 'utf8'));
+            p.version = process.env.VERSION;
+            fs.writeFileSync('.claude-plugin/plugin.json', JSON.stringify(p, null, 2) + '\n');
+          "
+          VERSION="$VERSION" node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('.claude-plugin/marketplace.json', 'utf8'));
+            m.plugins.forEach(p => { p.version = process.env.VERSION; });
+            fs.writeFileSync('.claude-plugin/marketplace.json', JSON.stringify(m, null, 2) + '\n');
+          "
 
       - run: pnpm build
 
