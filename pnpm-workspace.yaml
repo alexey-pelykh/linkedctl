@@ -17,4 +17,4 @@ catalog:
   commander: "^14.0.3"
   yaml: "^2.8.2"
   typedoc: "^0.28.17"
-  turbo: "^2.8.16"
+  turbo: "^2.8.17"
